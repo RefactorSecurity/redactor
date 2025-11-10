@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingRedactUrlPath = document.getElementById(
     "setting-redact-url-path"
   );
+  const settingRedactHost = document.getElementById("setting-redact-host");
   const settingRedactQueryString = document.getElementById(
     "setting-redact-query-string"
   );
@@ -106,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const defaultSettings = {
     redaction: {
       redactUrlPath: false,
+      redactHost: true,
       redactQueryString: true,
       redactParamNames: false,
       redactCookies: true,
@@ -292,6 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ui: { ...defaultSettings.ui, ...saved?.ui },
     };
     settingRedactUrlPath.checked = settings.redaction.redactUrlPath;
+    settingRedactHost.checked = settings.redaction.redactHost;
     settingRedactQueryString.checked =
       settings.redaction.redactQueryString;
     settingRedactParamNames.checked = settings.redaction.redactParamNames;
@@ -953,6 +956,10 @@ document.addEventListener("DOMContentLoaded", () => {
         ) {
           return `${key}: ${redactor.redactString(value)}`;
         }
+        if (lowerKey === "host") {
+          if (!settings.redaction.redactHost) return headerLine;
+          return `${key}: ${redactor.redactString(value)}`;
+        }
         const csrfHeaderNames = [
           "x-csrf-token",
           "x-xsrf-token",
@@ -965,7 +972,6 @@ document.addEventListener("DOMContentLoaded", () => {
           return `${key}: ${redactor.redactString(value)}`;
         }
         const safeHeaders = [
-          "host",
           "content-type",
           "content-length",
           "connection",
@@ -1304,6 +1310,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Settings Listeners
   settingRedactUrlPath.addEventListener("change", (e) => {
     settings.redaction.redactUrlPath = e.target.checked;
+    saveSettings();
+  });
+  settingRedactHost.addEventListener("change", (e) => {
+    settings.redaction.redactHost = e.target.checked;
     saveSettings();
   });
   settingRedactQueryString.addEventListener("change", (e) => {
