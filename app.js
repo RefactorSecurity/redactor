@@ -34,6 +34,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingIgnoredWords = document.getElementById(
     "setting-ignored-words"
   );
+  const settingProtectedFields = document.getElementById(
+    "setting-protected-fields"
+  );
   const settingDarkTheme = document.getElementById("setting-dark-theme");
   const settingSyntaxHighlight = document.getElementById(
     "setting-syntax-highlight"
@@ -84,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
       redactCookies: true,
       redactCsrf: true,
       ignoredWords: [],
+      protectedFields: [],
     },
     ui: {
       useDarkTheme: window.matchMedia("(prefers-color-scheme: dark)")
@@ -134,6 +138,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!Array.isArray(savedRedaction.ignoredWords)) {
       savedRedaction.ignoredWords = [];
     }
+    if (!Array.isArray(savedRedaction.protectedFields)) {
+      savedRedaction.protectedFields = [];
+    }
     settings = {
       redaction: { ...defaultSettings.redaction, ...savedRedaction },
       ui: { ...defaultSettings.ui, ...saved?.ui },
@@ -146,6 +153,8 @@ document.addEventListener("DOMContentLoaded", () => {
     settingRedactCsrf.checked = settings.redaction.redactCsrf;
     settingIgnoredWords.value =
       settings.redaction.ignoredWords.join(", ");
+    settingProtectedFields.value =
+      settings.redaction.protectedFields.join(", ");
     settingDarkTheme.checked = settings.ui.useDarkTheme;
     settingSyntaxHighlight.checked = settings.ui.syntaxHighlight;
   }
@@ -287,6 +296,11 @@ document.addEventListener("DOMContentLoaded", () => {
       this.wordMap = this.constructor.buildWordMap();
       this.ignoredWordsSet = new Set(
         (this.settings.ignoredWords || []).map((w) => w.toLowerCase())
+      );
+      this.protectedFieldsSet = new Set(
+        (this.settings.protectedFields || []).map((field) =>
+          field.toLowerCase()
+        )
       );
     }
 
@@ -452,6 +466,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return redacted;
     }
 
+    isProtectedField(fieldName) {
+      if (typeof fieldName !== "string") return false;
+      const normalized = fieldName.trim().toLowerCase();
+      if (!normalized) return false;
+      return this.protectedFieldsSet.has(normalized);
+    }
+
     static commonWords = [];
   }
 
@@ -461,6 +482,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function redactJsonStructure(value, currentRedactor, key = null) {
     if (value === null) return null;
+    if (
+      typeof key === "string" &&
+      currentRedactor?.isProtectedField?.(key)
+    ) {
+      return value;
+    }
     // CSRF check for any value type
     if (currentRedactor.settings.redactCsrf && typeof key === "string") {
       const lowerKey = key.toLowerCase();
@@ -545,13 +572,18 @@ document.addEventListener("DOMContentLoaded", () => {
       format: "XML",
     });
     function traverseAndRedact(node) {
-      if (node.nodeType === 3 && node.nodeValue.trim()) {
+      if (
+        node.nodeType === 3 &&
+        node.nodeValue.trim() &&
+        !redactor.isProtectedField(node.parentNode?.nodeName)
+      ) {
         node.nodeValue = redactor.redactPrimitive(node.nodeValue);
       }
       if (node.attributes) {
-        Array.from(node.attributes).forEach(
-          (attr) => (attr.value = redactor.redactPrimitive(attr.value))
-        );
+        Array.from(node.attributes).forEach((attr) => {
+          if (redactor.isProtectedField(attr.name)) return;
+          attr.value = redactor.redactPrimitive(attr.value);
+        });
       }
       node.childNodes.forEach(traverseAndRedact);
     }
@@ -610,11 +642,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const redactedParams = new URLSearchParams();
     for (const [key, value] of params.entries()) {
+      const isProtected = redactor.isProtectedField(key);
+      const redactedKey =
+        !isProtected && settings.redaction.redactParamNames
+          ? redactor.redactString(key)
+          : key;
       let redactedValue;
-      const redactedKey = settings.redaction.redactParamNames
-        ? redactor.redactString(key)
-        : key;
-      if (
+      if (isProtected) {
+        redactedValue = value;
+      } else if (
         redactor.settings.redactCsrf &&
         key.toLowerCase().includes("csrf")
       ) {
@@ -691,10 +727,14 @@ document.addEventListener("DOMContentLoaded", () => {
           const params = new URLSearchParams(queryString);
           const redactedParams = new URLSearchParams();
           for (const [key, value] of params) {
-            const redactedKey = settings.redaction.redactParamNames
-              ? redactor.redactString(key)
-              : key;
-            const redactedValue = redactor.redactPrimitive(value);
+            const isProtected = redactor.isProtectedField(key);
+            const redactedKey =
+              !isProtected && settings.redaction.redactParamNames
+                ? redactor.redactString(key)
+                : key;
+            const redactedValue = isProtected
+              ? value
+              : redactor.redactPrimitive(value);
             redactedParams.append(
               redactedKey,
               typeof redactedValue === "string"
@@ -730,6 +770,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const key = parts[0];
         const value = parts[1] || "";
         const lowerKey = key.toLowerCase();
+        if (redactor.isProtectedField(key)) {
+          return headerLine;
+        }
 
         if (
           settings.redaction.redactCookies &&
@@ -742,13 +785,16 @@ document.addEventListener("DOMContentLoaded", () => {
               const separatorIndex = trimmedPair.indexOf("=");
               if (separatorIndex === -1) return trimmedPair; // Attribute without value like "HttpOnly"
 
-              const cookieName = trimmedPair.substring(0, separatorIndex);
+              const cookieName = trimmedPair
+                .substring(0, separatorIndex)
+                .trim();
               const cookieValue = trimmedPair.substring(
                 separatorIndex + 1
               );
-              return `${cookieName}=${redactor.redactString(
-                cookieValue
-              )}`;
+              if (redactor.isProtectedField(cookieName)) {
+                return trimmedPair;
+              }
+              return `${cookieName}=${redactor.redactString(cookieValue)}`;
             })
             .join("; ");
           return `${key}: ${redactedCookieValue}`;
@@ -847,16 +893,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (xmlDoc.getElementsByTagName("parsererror").length > 0)
         throw new Error();
       function traverse(node) {
-        if (node.nodeType === 3 && node.nodeValue.trim()) {
-          node.nodeValue = currentRedactor.redactPrimitive(
-            node.nodeValue
-          );
+        if (
+          node.nodeType === 3 &&
+          node.nodeValue.trim() &&
+          !currentRedactor.isProtectedField(node.parentNode?.nodeName)
+        ) {
+          node.nodeValue = currentRedactor.redactPrimitive(node.nodeValue);
         }
         if (node.attributes) {
-          Array.from(node.attributes).forEach(
-            (attr) =>
-              (attr.value = currentRedactor.redactPrimitive(attr.value))
-          );
+          Array.from(node.attributes).forEach((attr) => {
+            if (currentRedactor.isProtectedField(attr.name)) return;
+            attr.value = currentRedactor.redactPrimitive(attr.value);
+          });
         }
         node.childNodes.forEach(traverse);
       }
@@ -873,11 +921,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (Array.from(params.keys()).length === 0) throw new Error();
       const redactedParams = new URLSearchParams();
       for (const [key, value] of params.entries()) {
+        const isProtected = currentRedactor.isProtectedField(key);
         let redactedValue;
-        const redactedKey = currentRedactor.settings.redactParamNames
-          ? currentRedactor.redactString(key)
-          : key;
-        if (
+        const redactedKey =
+          !isProtected && currentRedactor.settings.redactParamNames
+            ? currentRedactor.redactString(key)
+            : key;
+        if (isProtected) {
+          redactedValue = value;
+        } else if (
           currentRedactor.settings.redactCsrf &&
           key.toLowerCase().includes("csrf")
         ) {
@@ -1129,6 +1181,13 @@ document.addEventListener("DOMContentLoaded", () => {
       .split(",")
       .map((word) => word.trim())
       .filter((word) => word.length > 0);
+    saveSettings();
+  });
+  settingProtectedFields.addEventListener("input", (e) => {
+    settings.redaction.protectedFields = e.target.value
+      .split(",")
+      .map((field) => field.trim())
+      .filter((field) => field.length > 0);
     saveSettings();
   });
   settingDarkTheme.addEventListener("change", (e) => {
