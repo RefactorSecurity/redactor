@@ -170,28 +170,54 @@
       <div id="right-panel" class="flex flex-col w-1/2 h-full p-2">
         <div class="flex items-center justify-between mb-2">
           <label class="text-lg font-semibold">Redacted Data</label>
-          <button
-            id="copy-button"
-            title="Copy to clipboard"
-            class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-150 p-1 rounded-md"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          <div class="flex items-center space-x-2">
+            <button
+              id="copy-button"
+              title="Copy to clipboard"
+              class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-150 p-1 rounded-md"
             >
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path
-                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-              ></path>
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path
+                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                ></path>
+              </svg>
+            </button>
+                        <button
+              id="save-button"
+              title="Save to file"
+              type="button"
+              class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-150 p-1 rounded-md"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5Z"
+                ></path>
+                <path d="M17 21v-8H7v8"></path>
+                <path d="M7 3v5h8"></path>
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="output-editor" class="flex-grow overflow-hidden"></div>
       </div>

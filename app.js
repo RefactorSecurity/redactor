@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "scroll-right-button"
   );
   const copyButton = document.getElementById("copy-button");
+  const saveButton = document.getElementById("save-button");
   const openFileButton = document.getElementById("open-file-button");
   const openFileMenu = document.getElementById("open-file-menu");
   const exampleFilesList = document.getElementById("example-files-list");
@@ -227,6 +228,50 @@ document.addEventListener("DOMContentLoaded", () => {
     detectedFormatLabel.textContent = detected;
     renderTabs();
     renderContent();
+  }
+
+  function getSuggestedFilename() {
+    const activeTab = tabsState.find((t) => t.id === activeTabId);
+    const format = activeTab?.format || detectFormat(inputEditor.getValue());
+    const formatToExtension = {
+      JSON: "json",
+      XML: "xml",
+      YAML: "yaml",
+      "HTTP Request": "http",
+      "HTTP Response": "http",
+      "Form URL-Encoded": "txt",
+      "Plain Text": "txt",
+    };
+    const extension = formatToExtension[format] || "txt";
+    const baseName = (activeTab?.name || "redacted")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^\w.-]/g, "");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    return `${baseName || "redacted"}-${timestamp}.${extension}`;
+  }
+
+  function saveOutputToFile() {
+    const content = outputEditor.getValue();
+    if (!content) {
+      showError("No redacted output to save yet.");
+      return;
+    }
+    const filename = getSuggestedFilename();
+    const blob = new Blob([content], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    }, 0);
   }
 
   function saveSettings() {
@@ -1395,6 +1440,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 500);
   });
 
+  if (saveButton) {
+    saveButton.addEventListener("click", saveOutputToFile);
+  }
   copyButton.addEventListener("click", (e) => {
     const textToCopy = outputEditor.getValue();
     if (!textToCopy) return;
