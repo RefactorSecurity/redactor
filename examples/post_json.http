@@ -1,0 +1,10 @@
+POST /api/users HTTP/1.1
+Host: api.example.com
+User-Agent: my-client / 1.0
+Content-Type: application / json
+Content-Length: 48
+
+{
+    "username": "newuser",
+        "email": "new@example.com"
+}

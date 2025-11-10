@@ -1,0 +1,5 @@
+GET /api/profile HTTP/1.1
+Host: api.example.com
+User-Agent: my-client/1.0
+Accept: application/json
+Cookie: session_id=abc123xyz789; preferences=dark_mode

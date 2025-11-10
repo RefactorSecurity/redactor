@@ -1,0 +1,4 @@
+POST /api/users/123/promote?level=admin HTTP/1.1
+Host: api.example.com
+User-Agent: my-client/1.0
+Content-Length: 0

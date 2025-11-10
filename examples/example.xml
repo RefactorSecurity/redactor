@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<user>
+    <id>1001</id>
+    <name>Jane Doe</name>
+    <isActive>true</isActive>
+    <tags>
+        <tag>user</tag>
+        <tag>customer</tag>
+    </tags>
+</user>

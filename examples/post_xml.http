@@ -1,0 +1,10 @@
+POST /api/legacy/create HTTP/1.1
+Host: api.example.com
+User-Agent: my-client/1.0
+Content-Type: application/xml
+Content-Length: 85
+
+<?xml version="1.0"?>
+<request>
+    <username>newuser</username>
+</request>

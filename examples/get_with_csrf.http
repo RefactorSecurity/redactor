@@ -1,0 +1,6 @@
+GET /api/dashboard HTTP/1.1
+Host: api.example.com
+User-Agent: my-client/1.0
+Accept: application/json
+Cookie: session_id=abc123xyz789
+X-CSRF-Token: a1b2c3d4e5f6a7b8c9d0e1f2
