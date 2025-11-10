@@ -705,9 +705,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleXml(text) {
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(text, "application/xml");
-    if (xmlDoc.getElementsByTagName("parsererror").length)
+    let workingText = text;
+    let preservedDocType = "";
+    if (/^\s*<!DOCTYPE[\s\S]+?>/i.test(workingText)) {
+      const docTypeMatch = workingText.match(
+        /^\s*<!DOCTYPE[\s\S]+?>\s*/i
+      );
+      if (docTypeMatch) {
+        preservedDocType = docTypeMatch[0];
+        workingText = workingText.slice(docTypeMatch[0].length);
+      }
+    }
+    let xmlDoc = parser.parseFromString(
+      workingText,
+      "application/xml"
+    );
+    if (xmlDoc.getElementsByTagName("parsererror").length) {
+      xmlDoc = parser.parseFromString(workingText, "text/html");
+    }
+    if (!xmlDoc || !xmlDoc.documentElement) {
       throw new Error("XML parsing error.");
+    }
     const formattedInput = formatXml(xmlDoc);
     traverseAndRedact(xmlDoc.documentElement);
     const formattedOutput = formatXml(xmlDoc);
@@ -716,8 +734,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ""
     );
     updateActiveTabData({
-      input: formattedInput,
-      output: finalOutput,
+      input: preservedDocType + formattedInput,
+      output: preservedDocType + finalOutput,
       format: "XML",
     });
     function traverseAndRedact(node) {
@@ -1231,15 +1249,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function detectFormat(text) {
     const trimmedText = text.trim();
     if (!trimmedText) return "";
+    const normalizedText = trimmedText.replace(/^\uFEFF/, "");
 
     try {
-      const firstLine = text.split(/\r?\n/)[0].trim();
+      const firstLine = normalizedText.split(/\r?\n/)[0].trim();
       const reqRegex =
         /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE|CONNECT)\s+(.+)\s+HTTP\/[12](\.\d)?$/;
       const resRegex = /^HTTP\/[12](\.\d)?\s+(\d{3})\s+(.*)$/;
       if (reqRegex.test(firstLine)) return "HTTP Request";
       if (resRegex.test(firstLine)) return "HTTP Response";
     } catch (e) {}
+
+    if (/^<!doctype\b/i.test(normalizedText)) {
+      return "XML";
+    }
 
     try {
       JSON.parse(trimmedText);
@@ -1249,7 +1272,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(
-        trimmedText,
+        normalizedText,
         "application/xml"
       );
       if (xmlDoc.getElementsByTagName("parsererror").length > 0)
