@@ -907,9 +907,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       redactedStartLine = `${reqMatch[1]} ${pathAndQuery} HTTP/1.1`;
     } else {
-      redactedStartLine = `HTTP/1.1 ${
-        resMatch[1]
-      } ${redactor.redactString(resMatch[2])}`;
+      redactedStartLine = firstLine;
     }
 
     const redactedHeaders = headerLinesOnly
