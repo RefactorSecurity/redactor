@@ -9,6 +9,13 @@ document.addEventListener("DOMContentLoaded", () => {
     "scroll-right-button"
   );
   const copyButton = document.getElementById("copy-button");
+  const openFileButton = document.getElementById("open-file-button");
+  const openFileMenu = document.getElementById("open-file-menu");
+  const exampleFilesList = document.getElementById("example-files-list");
+  const chooseLocalFileButton = document.getElementById(
+    "choose-local-file-button"
+  );
+  const localFileInput = document.getElementById("local-file-input");
 
   // Settings Modal Elements
   const settingsButton = document.getElementById("settings-button");
@@ -78,6 +85,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let syntaxUpdateTimer;
   const COMMON_WORDS_URL = "words.txt";
   let commonWordsPromise = null;
+  const EXAMPLE_FILES = [
+    { label: "Sample JSON", file: "example.json" },
+    { label: "Sample XML", file: "example.xml" },
+    { label: "Sample YAML", file: "example.yaml" },
+    { label: "HTTP GET (no query)", file: "get_no_query.http" },
+    { label: "HTTP GET (with query)", file: "get_with_query.http" },
+    { label: "HTTP GET (with cookies)", file: "get_with_cookies.http" },
+    { label: "HTTP GET (with CSRF)", file: "get_with_csrf.http" },
+    { label: "HTTP POST (form data)", file: "post_form.http" },
+    { label: "HTTP POST (JSON)", file: "post_json.http" },
+    { label: "HTTP POST (no query)", file: "post_no_query.http" },
+    { label: "HTTP POST (with query)", file: "post_with_query.http" },
+    { label: "HTTP POST (XML)", file: "post_xml.http" },
+    { label: "HTTP Response Sample", file: "response_example.http" },
+    { label: "Query Parameters Sample", file: "query.txt" },
+  ];
 
   const defaultSettings = {
     redaction: {
@@ -126,6 +149,84 @@ document.addEventListener("DOMContentLoaded", () => {
   async function ensureCommonWordsLoaded() {
     if (RedactionEngine.commonWords?.length) return;
     await fetchCommonWords();
+  }
+
+  function populateExampleFiles() {
+    if (!exampleFilesList) return;
+    exampleFilesList.innerHTML = "";
+    EXAMPLE_FILES.forEach(({ label, file }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className =
+        "w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150";
+      button.textContent = label;
+      button.addEventListener("click", () => {
+        closeOpenFileMenu();
+        loadExampleFile(file, label);
+      });
+      exampleFilesList.appendChild(button);
+    });
+  }
+
+  function toggleOpenFileMenu() {
+    if (!openFileMenu) return;
+    openFileMenu.classList.toggle("hidden");
+  }
+
+  function closeOpenFileMenu() {
+    if (!openFileMenu) return;
+    openFileMenu.classList.add("hidden");
+  }
+
+  function loadExampleFile(fileName, label) {
+    fetch(`examples/${fileName}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Unable to load ${fileName}`);
+        }
+        return response.text();
+      })
+      .then((content) => {
+        loadContentIntoEditor(content, label || fileName);
+      })
+      .catch((error) => {
+        console.error("Example load failed:", error);
+        showError("Could not load the selected example file.");
+      });
+  }
+
+  function handleLocalFileSelection(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      loadContentIntoEditor(reader.result || "", file.name);
+      localFileInput.value = "";
+    };
+    reader.onerror = () => {
+      console.error("File read error:", reader.error);
+      showError("Failed to read the selected file.");
+      localFileInput.value = "";
+    };
+    reader.readAsText(file);
+  }
+
+  function loadContentIntoEditor(content, sourceLabel = "") {
+    const activeTab = tabsState.find((t) => t.id === activeTabId);
+    if (!activeTab) return;
+    activeTab.input = content;
+    activeTab.output = "";
+    const detected = detectFormat(content);
+    activeTab.format = detected;
+    if (sourceLabel) {
+      activeTab.name = sourceLabel;
+      activeTab.originalName = sourceLabel;
+    }
+    inputEditor.setValue(content);
+    outputEditor.setValue("");
+    detectedFormatLabel.textContent = detected;
+    renderTabs();
+    renderContent();
   }
 
   function saveSettings() {
@@ -1201,6 +1302,31 @@ document.addEventListener("DOMContentLoaded", () => {
     renderContent(); // Re-render to apply syntax highlighting change immediately
   });
 
+  if (openFileButton && openFileMenu) {
+    openFileButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleOpenFileMenu();
+    });
+    openFileMenu.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("click", (e) => {
+      if (openFileMenu.classList.contains("hidden")) return;
+      if (
+        !openFileMenu.contains(e.target) &&
+        e.target !== openFileButton &&
+        !openFileButton.contains(e.target)
+      ) {
+        closeOpenFileMenu();
+      }
+    });
+  }
+  if (chooseLocalFileButton && localFileInput) {
+    chooseLocalFileButton.addEventListener("click", () => {
+      closeOpenFileMenu();
+      localFileInput.click();
+    });
+    localFileInput.addEventListener("change", handleLocalFileSelection);
+  }
+
   tabsContainer.addEventListener("click", (e) => {
     if (
       e.target.id === "add-tab-button" ||
@@ -1353,6 +1479,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", checkTabOverflow);
 
   // --- Initialize First Tab & Settings ---
+  populateExampleFiles();
   loadSettings();
   updateTheme(settings.ui.useDarkTheme);
   const firstTab = createNewTab();
