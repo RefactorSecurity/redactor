@@ -10,6 +10,12 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const copyButton = document.getElementById("copy-button");
   const saveButton = document.getElementById("save-button");
+  const bulkSaveButton = document.getElementById("bulk-save-button");
+  const bulkSaveModal = document.getElementById("bulk-save-modal");
+  const bulkSaveCountInput = document.getElementById("bulk-save-count");
+  const bulkSaveStatus = document.getElementById("bulk-save-status");
+  const bulkSaveCancel = document.getElementById("bulk-save-cancel");
+  const bulkSaveConfirm = document.getElementById("bulk-save-confirm");
   const openFileButton = document.getElementById("open-file-button");
   const openFileMenu = document.getElementById("open-file-menu");
   const exampleFilesList = document.getElementById("example-files-list");
@@ -87,6 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let syntaxUpdateTimer;
   const COMMON_WORDS_URL = "words.txt";
   let commonWordsPromise = null;
+  const MAX_BULK_FILES = 50;
   const EXAMPLE_FILES = [
     { label: "Sample JSON", file: "example.json" },
     { label: "Sample XML", file: "example.xml" },
@@ -232,9 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderContent();
   }
 
-  function getSuggestedFilename() {
-    const activeTab = tabsState.find((t) => t.id === activeTabId);
-    const format = activeTab?.format || detectFormat(inputEditor.getValue());
+  function getExtensionForFormat(format) {
     const formatToExtension = {
       JSON: "json",
       XML: "xml",
@@ -244,7 +249,13 @@ document.addEventListener("DOMContentLoaded", () => {
       "Form URL-Encoded": "txt",
       "Plain Text": "txt",
     };
-    const extension = formatToExtension[format] || "txt";
+    return formatToExtension[format] || "txt";
+  }
+
+  function getSuggestedFilename() {
+    const activeTab = tabsState.find((t) => t.id === activeTabId);
+    const format = activeTab?.format || detectFormat(inputEditor.getValue());
+    const extension = getExtensionForFormat(format);
     const baseName = (activeTab?.name || "redacted")
       .trim()
       .toLowerCase()
@@ -252,6 +263,19 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/[^\w.-]/g, "");
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     return `${baseName || "redacted"}-${timestamp}.${extension}`;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    }, 0);
   }
 
   function saveOutputToFile() {
@@ -264,16 +288,97 @@ document.addEventListener("DOMContentLoaded", () => {
     const blob = new Blob([content], {
       type: "text/plain;charset=utf-8",
     });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-    }, 0);
+    downloadBlob(blob, filename);
+  }
+
+  function getBulkFilename(format, index) {
+    const extension = getExtensionForFormat(format);
+    const slug = (format || "redacted")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "redacted";
+    const paddedIndex = String(index).padStart(2, "0");
+    return `${slug}-${paddedIndex}.${extension}`;
+  }
+
+  function getBulkZipFilename(count) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    return `redactions-${count}-${timestamp}.zip`;
+  }
+
+  function openBulkSaveModal() {
+    if (!bulkSaveModal) return;
+    if (bulkSaveStatus) bulkSaveStatus.textContent = "";
+    if (bulkSaveCountInput) {
+      bulkSaveCountInput.value = bulkSaveCountInput.value || "5";
+      setTimeout(() => bulkSaveCountInput.focus(), 0);
+    }
+    bulkSaveModal.classList.remove("hidden");
+  }
+
+  function closeBulkSaveModal() {
+    if (!bulkSaveModal) return;
+    bulkSaveModal.classList.add("hidden");
+    if (bulkSaveStatus) bulkSaveStatus.textContent = "";
+  }
+
+  async function generateBulkZip(count) {
+    if (typeof JSZip === "undefined") {
+      throw new Error("Bulk export unavailable. JSZip failed to load.");
+    }
+    const text = inputEditor.getValue();
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      throw new Error("Provide input data before generating redactions.");
+    }
+    await ensureCommonWordsLoaded();
+    const format = detectFormat(text);
+    const zip = new JSZip();
+    for (let i = 0; i < count; i++) {
+      const tempRedactor = new RedactionEngine(settings.redaction);
+      const result = computeRedactionResult(
+        format,
+        text,
+        trimmedText,
+        tempRedactor,
+        settings.redaction
+      );
+      const filename = getBulkFilename(result.format || format, i + 1);
+      zip.file(filename, result.output || "");
+      if (bulkSaveStatus)
+        bulkSaveStatus.textContent = `Generated ${i + 1} of ${count}`;
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    downloadBlob(blob, getBulkZipFilename(count));
+  }
+
+  async function handleBulkSaveGeneration() {
+    const desiredCount = parseInt(bulkSaveCountInput?.value || "0", 10);
+    if (
+      Number.isNaN(desiredCount) ||
+      desiredCount < 1 ||
+      desiredCount > MAX_BULK_FILES
+    ) {
+      if (bulkSaveStatus)
+        bulkSaveStatus.textContent = `Enter a value between 1 and ${MAX_BULK_FILES}.`;
+      return;
+    }
+    if (bulkSaveConfirm) bulkSaveConfirm.disabled = true;
+    if (bulkSaveCancel) bulkSaveCancel.disabled = true;
+    if (bulkSaveStatus) bulkSaveStatus.textContent = "Generating files...";
+    try {
+      await generateBulkZip(desiredCount);
+      closeBulkSaveModal();
+    } catch (error) {
+      console.error("Bulk redaction failed:", error);
+      const message =
+        error?.message || "Failed to generate bulk redactions.";
+      if (bulkSaveStatus) bulkSaveStatus.textContent = message;
+      showError(message);
+    } finally {
+      if (bulkSaveConfirm) bulkSaveConfirm.disabled = false;
+      if (bulkSaveCancel) bulkSaveCancel.disabled = false;
+    }
   }
 
   function saveSettings() {
@@ -435,6 +540,404 @@ document.addEventListener("DOMContentLoaded", () => {
     scrollRightButton.disabled = atEnd;
     scrollLeftButton.classList.toggle("opacity-50", atStart);
     scrollRightButton.classList.toggle("opacity-50", atEnd);
+  }
+
+  function sortObjectKeys(obj) {
+    if (typeof obj !== "object" || obj === null) return obj;
+    if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+    return Object.keys(obj)
+      .sort()
+      .reduce(
+        (res, k) => ({
+          ...res,
+          [k]: sortObjectKeys(obj[k]),
+        }),
+        {}
+      );
+  }
+
+  function redactPlainTextResult(text, currentRedactor = redactor) {
+    const redactedText = text
+      .split("\n")
+      .map((line) => currentRedactor.redactString(line))
+      .join("\n");
+    return { input: text, output: redactedText, format: "Plain Text" };
+  }
+
+  function redactJsonResult(text, currentRedactor = redactor) {
+    const data = JSON.parse(text);
+    const sorted = sortObjectKeys(data);
+    const formattedInput = JSON.stringify(sorted, null, 2);
+    const redacted = redactJsonStructure(sorted, currentRedactor);
+    const redactedString = JSON.stringify(redacted, null, 2);
+    const finalString = redactedString.replace(
+      new RegExp(
+        `"${currentRedactor.floatPlaceholderPrefix}([-.0-9]+)"`,
+        "g"
+      ),
+      (m, n) => n
+    );
+    return { input: formattedInput, output: finalString, format: "JSON" };
+  }
+
+  function redactYamlResult(text, currentRedactor = redactor) {
+    const data = jsyaml.load(text);
+    const redacted = redactJsonStructure(data, currentRedactor);
+    const redactedYaml = jsyaml.dump(redacted, { noArrayIndent: true });
+    return { input: text, output: redactedYaml, format: "YAML" };
+  }
+
+  function formatXmlDocument(xmlNode) {
+    const serializer = new XMLSerializer();
+    const xmlString = serializer.serializeToString(xmlNode);
+    let contentString = xmlString;
+    let declaration = "";
+    const declMatch = xmlString.match(/(<\?xml[^>]*\?>\s*)/);
+    if (declMatch) {
+      declaration = declMatch[0];
+      contentString = xmlString.substring(declaration.length);
+    }
+    let formatted = "",
+      indent = "";
+    const tab = "  ";
+    const parts = contentString.split(/>\s*</);
+    if (parts.length === 1 && !declaration) return xmlString;
+    parts.forEach((node, index) => {
+      let isClosing = node.startsWith("/");
+      if (isClosing) indent = indent.substring(tab.length);
+      let padding = indent;
+      if (index > 0) padding = "\n" + indent;
+      let reconstructedNode =
+        index === 0
+          ? node + ">"
+          : index === parts.length - 1
+          ? "<" + node
+          : "<" + node + ">";
+      if (reconstructedNode.trim())
+        formatted += padding + reconstructedNode;
+      if (
+        !isClosing &&
+        !node.endsWith("/") &&
+        !reconstructedNode.includes("</")
+      )
+        indent += tab;
+    });
+    return declaration + formatted;
+  }
+
+  function redactXmlResult(text, currentRedactor = redactor) {
+    const parser = new DOMParser();
+    let workingText = text;
+    let preservedDocType = "";
+    if (/^\s*<!DOCTYPE[\s\S]+?>/i.test(workingText)) {
+      const docTypeMatch = workingText.match(
+        /^\s*<!DOCTYPE[\s\S]+?>\s*/i
+      );
+      if (docTypeMatch) {
+        preservedDocType = docTypeMatch[0];
+        workingText = workingText.slice(docTypeMatch[0].length);
+      }
+    }
+    let xmlDoc = parser.parseFromString(workingText, "application/xml");
+    if (xmlDoc.getElementsByTagName("parsererror").length) {
+      xmlDoc = parser.parseFromString(workingText, "text/html");
+    }
+    if (!xmlDoc || !xmlDoc.documentElement) {
+      throw new Error("XML parsing error.");
+    }
+
+    function traverseAndRedact(node) {
+      if (
+        node.nodeType === 3 &&
+        node.nodeValue.trim() &&
+        !currentRedactor.isProtectedField(node.parentNode?.nodeName)
+      ) {
+        node.nodeValue = currentRedactor.redactPrimitive(node.nodeValue);
+      }
+      if (node.attributes) {
+        Array.from(node.attributes).forEach((attr) => {
+          if (currentRedactor.isProtectedField(attr.name)) return;
+          attr.value = currentRedactor.redactPrimitive(attr.value);
+        });
+      }
+      node.childNodes.forEach(traverseAndRedact);
+    }
+
+    const formattedInput = formatXmlDocument(xmlDoc.cloneNode(true));
+    traverseAndRedact(xmlDoc.documentElement);
+    const formattedOutput = formatXmlDocument(xmlDoc).replace(
+      new RegExp(currentRedactor.floatPlaceholderPrefix, "g"),
+      ""
+    );
+    return {
+      input: preservedDocType + formattedInput,
+      output: preservedDocType + formattedOutput,
+      format: "XML",
+    };
+  }
+
+  function redactFormUrlEncodedResult(
+    text,
+    currentRedactor = redactor,
+    redactionSettings = settings.redaction
+  ) {
+    const trimmedText = text.trim();
+    if (
+      !text.includes("=") ||
+      trimmedText.startsWith("{") ||
+      trimmedText.startsWith("<") ||
+      trimmedText.startsWith("HTTP/")
+    ) {
+      throw new Error("Not an application/x-www-form-urlencoded string.");
+    }
+    const params = new URLSearchParams(text);
+    if (Array.from(params.keys()).length === 0) {
+      throw new Error("No valid parameters found.");
+    }
+    const redactedParams = new URLSearchParams();
+    for (const [key, value] of params.entries()) {
+      const isProtected = currentRedactor.isProtectedField(key);
+      const redactedKey =
+        !isProtected && redactionSettings.redactParamNames
+          ? currentRedactor.redactString(key)
+          : key;
+      let redactedValue;
+      if (isProtected) {
+        redactedValue = value;
+      } else if (
+        currentRedactor.settings.redactCsrf &&
+        key.toLowerCase().includes("csrf")
+      ) {
+        redactedValue = currentRedactor.redactString(value);
+      } else {
+        const primitive = currentRedactor.redactPrimitive(value);
+        redactedValue =
+          typeof primitive === "string" &&
+          primitive.startsWith(currentRedactor.floatPlaceholderPrefix)
+            ? primitive.substring(
+                currentRedactor.floatPlaceholderPrefix.length
+              )
+            : String(primitive);
+      }
+      redactedParams.append(redactedKey, redactedValue);
+    }
+    const formatParams = (p) => p.toString();
+    return {
+      input: formatParams(params),
+      output: formatParams(redactedParams),
+      format: "Form URL-Encoded",
+    };
+  }
+
+  function redactHttpResult(
+    text,
+    currentRedactor = redactor,
+    redactionSettings = settings.redaction
+  ) {
+    const lines = text.split(/\r?\n/);
+    const firstLine = lines[0].trim();
+    const reqRegex =
+      /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE|CONNECT)\s+(.+)\s+HTTP\/[12](\.\d)?$/;
+    const resRegex = /^HTTP\/[12](\.\d)?\s+(\d{3})\s+(.*)$/;
+    const reqMatch = firstLine.match(reqRegex);
+    const resMatch = firstLine.match(resRegex);
+    if (!reqMatch && !resMatch)
+      throw new Error("Not an HTTP request or response.");
+
+    let headerEndIndex = lines.findIndex((line) => line.trim() === "");
+    if (headerEndIndex === -1) headerEndIndex = lines.length;
+    const headerLinesOnly = lines.slice(1, headerEndIndex);
+    const headerBlock = lines.slice(0, headerEndIndex).join("\n");
+    const body = lines.slice(headerEndIndex + 1).join("\n");
+    let formattedInput = text;
+
+    let contentType = "";
+    const contentTypeHeader = headerLinesOnly.find((h) =>
+      h.toLowerCase().startsWith("content-type:")
+    );
+    if (contentTypeHeader) {
+      contentType = contentTypeHeader.split(":")[1].trim().split(";")[0];
+    }
+
+    if (
+      contentType.includes("json") ||
+      (!contentType && body.trim().startsWith("{"))
+    ) {
+      try {
+        const bodyJson = JSON.parse(body);
+        const sorted = sortObjectKeys(bodyJson);
+        const prettifiedBody = JSON.stringify(sorted, null, 2);
+        if (body !== prettifiedBody) {
+          formattedInput = headerBlock + "\n\n" + prettifiedBody;
+        }
+      } catch (e) {}
+    }
+
+    let redactedStartLine;
+    if (reqMatch) {
+      let pathAndQuery = reqMatch[2];
+      const [path, queryString] = pathAndQuery.split("?");
+      let redactedQuery = "";
+
+      if (queryString) {
+        if (redactionSettings.redactQueryString) {
+          const params = new URLSearchParams(queryString);
+          const redactedParams = new URLSearchParams();
+          for (const [key, value] of params) {
+            const isProtected = currentRedactor.isProtectedField(key);
+            const redactedKey =
+              !isProtected && redactionSettings.redactParamNames
+                ? currentRedactor.redactString(key)
+                : key;
+            const redactedValue = isProtected
+              ? value
+              : currentRedactor.redactPrimitive(value);
+            redactedParams.append(
+              redactedKey,
+              typeof redactedValue === "string"
+                ? redactedValue.replace(
+                    currentRedactor.floatPlaceholderPrefix,
+                    ""
+                  )
+                : redactedValue
+            );
+          }
+          redactedQuery = "?" + redactedParams.toString();
+        } else {
+          redactedQuery = "?" + queryString;
+        }
+      }
+
+      const redactedPath = redactionSettings.redactUrlPath
+        ? currentRedactor.redactString(path)
+        : path;
+      pathAndQuery = redactedPath + redactedQuery;
+
+      redactedStartLine = `${reqMatch[1]} ${pathAndQuery} HTTP/1.1`;
+    } else {
+      redactedStartLine = firstLine;
+    }
+
+    const redactedHeaders = headerLinesOnly
+      .map((headerLine) => {
+        const parts = headerLine.split(/:\s*(.*)/s);
+        if (parts.length < 2) return headerLine;
+        const key = parts[0];
+        const value = parts[1] || "";
+        const lowerKey = key.toLowerCase();
+        if (currentRedactor.isProtectedField(key)) {
+          return headerLine;
+        }
+
+        if (
+          redactionSettings.redactCookies &&
+          (lowerKey === "cookie" || lowerKey === "set-cookie")
+        ) {
+          const redactedCookieValue = value
+            .split(";")
+            .map((cookiePair) => {
+              const trimmedPair = cookiePair.trim();
+              const separatorIndex = trimmedPair.indexOf("=");
+              if (separatorIndex === -1) return trimmedPair;
+
+              const cookieName = trimmedPair
+                .substring(0, separatorIndex)
+                .trim();
+              const cookieValue = trimmedPair.substring(
+                separatorIndex + 1
+              );
+              if (currentRedactor.isProtectedField(cookieName)) {
+                return trimmedPair;
+              }
+              return `${cookieName}=${currentRedactor.redactString(
+                cookieValue
+              )}`;
+            })
+            .join("; ");
+          return `${key}: ${redactedCookieValue}`;
+        }
+
+        if (
+          redactionSettings.redactCookies &&
+          (lowerKey === "authorization" ||
+            lowerKey === "proxy-authorization")
+        ) {
+          return `${key}: ${currentRedactor.redactString(value)}`;
+        }
+        if (lowerKey === "host") {
+          if (!redactionSettings.redactHost) return headerLine;
+          return `${key}: ${currentRedactor.redactString(value)}`;
+        }
+        const csrfHeaderNames = [
+          "x-csrf-token",
+          "x-xsrf-token",
+          "csrf-token",
+        ];
+        if (
+          redactionSettings.redactCsrf &&
+          csrfHeaderNames.includes(lowerKey)
+        ) {
+          return `${key}: ${currentRedactor.redactString(value)}`;
+        }
+        const safeHeaders = [
+          "content-type",
+          "content-length",
+          "connection",
+          "accept",
+          "user-agent",
+          "date",
+          "server",
+          "accept-encoding",
+          "accept-language",
+        ];
+        if (safeHeaders.includes(lowerKey)) return headerLine;
+
+        return `${key}: ${currentRedactor.redactString(value)}`;
+      })
+      .join("\n");
+
+    const redactedBody = redactBodyContent(
+      body,
+      currentRedactor,
+      contentType
+    );
+    const finalRedacted = `${redactedStartLine}\n${redactedHeaders}${
+      body ? "\n\n" + redactedBody : ""
+    }`;
+
+    return {
+      input: formattedInput,
+      output: finalRedacted,
+      format: reqMatch ? "HTTP Request" : "HTTP Response",
+    };
+  }
+
+  function computeRedactionResult(
+    format,
+    text,
+    trimmedText,
+    currentRedactor,
+    redactionSettings = settings.redaction
+  ) {
+    switch (format) {
+      case "HTTP Request":
+      case "HTTP Response":
+        return redactHttpResult(text, currentRedactor, redactionSettings);
+      case "JSON":
+        return redactJsonResult(trimmedText, currentRedactor);
+      case "XML":
+        return redactXmlResult(text, currentRedactor);
+      case "YAML":
+        return redactYamlResult(text, currentRedactor);
+      case "Form URL-Encoded":
+        return redactFormUrlEncodedResult(
+          text,
+          currentRedactor,
+          redactionSettings
+        );
+      default:
+        return redactPlainTextResult(text, currentRedactor);
+    }
   }
 
   // --- Redaction Engine ---
@@ -666,131 +1169,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleJson(text) {
-    const data = JSON.parse(text);
-    const sorted = sortObjectKeys(data);
-    const formattedInput = JSON.stringify(sorted, null, 2);
-    const redacted = redactJsonStructure(sorted, redactor);
-    const redactedString = JSON.stringify(redacted, null, 2);
-    const finalString = redactedString.replace(
-      new RegExp(`"${redactor.floatPlaceholderPrefix}([-.0-9]+)"`, "g"),
-      (m, n) => n
-    );
-    updateActiveTabData({
-      input: formattedInput,
-      output: finalString,
-      format: "JSON",
-    });
-    function sortObjectKeys(obj) {
-      if (typeof obj !== "object" || obj === null) return obj;
-      if (Array.isArray(obj)) return obj.map(sortObjectKeys);
-      return Object.keys(obj)
-        .sort()
-        .reduce(
-          (res, k) => ({ ...res, [k]: sortObjectKeys(obj[k]) }),
-          {}
-        );
-    }
+    updateActiveTabData(redactJsonResult(text));
   }
 
   function handleYaml(text) {
-    const data = jsyaml.load(text);
-    const redacted = redactJsonStructure(data, redactor);
-    const redactedYaml = jsyaml.dump(redacted, { noArrayIndent: true });
-    updateActiveTabData({
-      input: text,
-      output: redactedYaml,
-      format: "YAML",
-    });
+    updateActiveTabData(redactYamlResult(text));
   }
 
   function handleXml(text) {
-    const parser = new DOMParser();
-    let workingText = text;
-    let preservedDocType = "";
-    if (/^\s*<!DOCTYPE[\s\S]+?>/i.test(workingText)) {
-      const docTypeMatch = workingText.match(
-        /^\s*<!DOCTYPE[\s\S]+?>\s*/i
-      );
-      if (docTypeMatch) {
-        preservedDocType = docTypeMatch[0];
-        workingText = workingText.slice(docTypeMatch[0].length);
-      }
-    }
-    let xmlDoc = parser.parseFromString(
-      workingText,
-      "application/xml"
-    );
-    if (xmlDoc.getElementsByTagName("parsererror").length) {
-      xmlDoc = parser.parseFromString(workingText, "text/html");
-    }
-    if (!xmlDoc || !xmlDoc.documentElement) {
-      throw new Error("XML parsing error.");
-    }
-    const formattedInput = formatXml(xmlDoc);
-    traverseAndRedact(xmlDoc.documentElement);
-    const formattedOutput = formatXml(xmlDoc);
-    const finalOutput = formattedOutput.replace(
-      new RegExp(redactor.floatPlaceholderPrefix, "g"),
-      ""
-    );
-    updateActiveTabData({
-      input: preservedDocType + formattedInput,
-      output: preservedDocType + finalOutput,
-      format: "XML",
-    });
-    function traverseAndRedact(node) {
-      if (
-        node.nodeType === 3 &&
-        node.nodeValue.trim() &&
-        !redactor.isProtectedField(node.parentNode?.nodeName)
-      ) {
-        node.nodeValue = redactor.redactPrimitive(node.nodeValue);
-      }
-      if (node.attributes) {
-        Array.from(node.attributes).forEach((attr) => {
-          if (redactor.isProtectedField(attr.name)) return;
-          attr.value = redactor.redactPrimitive(attr.value);
-        });
-      }
-      node.childNodes.forEach(traverseAndRedact);
-    }
-    function formatXml(xmlNode) {
-      const serializer = new XMLSerializer();
-      const xmlString = serializer.serializeToString(xmlNode);
-      let contentString = xmlString;
-      let declaration = "";
-      const declMatch = xmlString.match(/(<\?xml[^>]*\?>\s*)/);
-      if (declMatch) {
-        declaration = declMatch[0];
-        contentString = xmlString.substring(declaration.length);
-      }
-      let formatted = "",
-        indent = "";
-      const tab = "  ";
-      const parts = contentString.split(/>\s*</);
-      if (parts.length === 1 && !declaration) return xmlString;
-      parts.forEach((node, index) => {
-        let isClosing = node.startsWith("/");
-        if (isClosing) indent = indent.substring(tab.length);
-        let padding = indent;
-        if (index > 0) padding = "\n" + indent;
-        let reconstructedNode =
-          index === 0
-            ? node + ">"
-            : index === parts.length - 1
-            ? "<" + node
-            : "<" + node + ">";
-        if (reconstructedNode.trim())
-          formatted += padding + reconstructedNode;
-        if (
-          !isClosing &&
-          !node.endsWith("/") &&
-          !reconstructedNode.includes("</")
-        )
-          indent += tab;
-      });
-      return declaration + formatted;
-    }
+    updateActiveTabData(redactXmlResult(text));
   }
 
   function handleFormUrlEncoded(text) {
@@ -1159,11 +1546,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handlePlainText(text) {
-    const redactedText = text
-      .split("\n")
-      .map((line) => redactor.redactString(line))
-      .join("\n");
-    updateActiveTabData({ output: redactedText, format: "Plain Text" });
+    updateActiveTabData(redactPlainTextResult(text));
   }
 
   // --- Event Dispatcher ---
@@ -1185,7 +1568,6 @@ document.addEventListener("DOMContentLoaded", () => {
       showError("Unable to load word list. Please try again.");
       return;
     }
-    redactor = new RedactionEngine(settings.redaction);
     const activeTab = tabsState.find((t) => t.id === activeTabId);
     if (!activeTab) return;
 
@@ -1194,39 +1576,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const trimmedText = text.trim();
 
     if (!trimmedText) {
-      updateActiveTabData({ output: "", format: "" });
+      updateActiveTabData({ input: "", output: "", format: "" });
       renderContent();
       return;
     }
 
     const format = detectFormat(text);
-    activeTab.format = format;
 
     try {
-      switch (format) {
-        case "HTTP Request":
-        case "HTTP Response":
-          handleHttp(text);
-          break;
-        case "JSON":
-          handleJson(trimmedText);
-          break;
-        case "XML":
-          handleXml(trimmedText);
-          break;
-        case "YAML":
-          handleYaml(trimmedText);
-          break;
-        case "Form URL-Encoded":
-          handleFormUrlEncoded(trimmedText);
-          break;
-        default:
-          handlePlainText(text);
-      }
+      redactor = new RedactionEngine(settings.redaction);
+      const result = computeRedactionResult(
+        format,
+        text,
+        trimmedText,
+        redactor,
+        settings.redaction
+      );
+      updateActiveTabData(result);
     } catch (e) {
       console.error("Redaction Error:", e);
-      showError(`Failed to process as ${format}.`);
-      handlePlainText(text); // Fallback to plain text on error
+      showError(`Failed to process as ${format || "Plain Text"}.`);
+      updateActiveTabData(redactPlainTextResult(text, redactor));
     }
 
     render();
@@ -1378,6 +1748,21 @@ document.addEventListener("DOMContentLoaded", () => {
     renderContent(); // Re-render to apply syntax highlighting change immediately
   });
 
+  if (bulkSaveButton && bulkSaveModal) {
+    bulkSaveButton.addEventListener("click", () => {
+      if (!inputEditor.getValue().trim()) {
+        showError("Provide input data before generating bulk redactions.");
+        return;
+      }
+      openBulkSaveModal();
+    });
+    bulkSaveCancel?.addEventListener("click", closeBulkSaveModal);
+    bulkSaveConfirm?.addEventListener("click", handleBulkSaveGeneration);
+    bulkSaveModal.addEventListener("click", (e) => {
+      if (e.target === bulkSaveModal) closeBulkSaveModal();
+    });
+  }
+
   if (openFileButton && openFileMenu) {
     openFileButton.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1501,6 +1886,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       redactButton.click();
+    } else if (
+      e.key === "Escape" &&
+      !bulkSaveModal?.classList.contains("hidden")
+    ) {
+      closeBulkSaveModal();
     }
   });
 

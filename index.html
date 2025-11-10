@@ -20,12 +20,12 @@
     />
 
     <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         darkMode: "class",
       };
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="theme-init.js"></script>
   </head>
   <body
@@ -127,7 +127,9 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
               >
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2z"></path>
+                <path
+                  d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2z"
+                ></path>
                 <line x1="12" y1="11" x2="12" y2="17"></line>
                 <line x1="9" y1="14" x2="15" y2="14"></line>
               </svg>
@@ -136,8 +138,12 @@
               id="open-file-menu"
               class="hidden absolute top-8 left-0 z-30 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg"
             >
-              <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              <div
+                class="px-4 py-2 border-b border-gray-200 dark:border-gray-700"
+              >
+                <p
+                  class="text-sm font-semibold text-gray-700 dark:text-gray-200"
+                >
                   Load Data
                 </p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -199,7 +205,7 @@
                 ></path>
               </svg>
             </button>
-                        <button
+            <button
               id="save-button"
               title="Save to file"
               type="button"
@@ -223,6 +229,29 @@
                 <path d="M7 3v5h8"></path>
               </svg>
             </button>
+            <button
+              id="bulk-save-button"
+              title="Generate bulk redactions"
+              type="button"
+              class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-150 p-1 rounded-md"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </button>
           </div>
         </div>
         <div id="output-editor" class="flex-grow overflow-hidden"></div>
@@ -230,6 +259,59 @@
     </div>
 
     <input type="file" id="local-file-input" class="hidden" />
+
+    <div
+      id="bulk-save-modal"
+      class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50 px-4"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 space-y-4"
+      >
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Bulk Redaction
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Enter how many unique redacted files you would like to generate.
+          </p>
+        </div>
+        <div>
+          <label
+            for="bulk-save-count"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >Number of files</label
+          >
+          <input
+            type="number"
+            id="bulk-save-count"
+            min="1"
+            max="50"
+            value="5"
+            class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+          <p
+            id="bulk-save-status"
+            class="text-xs text-gray-500 dark:text-gray-400 mt-2 h-4"
+          ></p>
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button
+            id="bulk-save-cancel"
+            type="button"
+            class="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+          >
+            Cancel
+          </button>
+          <button
+            id="bulk-save-confirm"
+            type="button"
+            class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150"
+          >
+            Generate ZIP
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div class="flex justify-end px-6 py-4">
       <button
@@ -436,6 +518,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/http/http.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/display/placeholder.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <script src="app.js"></script>
   </body>
