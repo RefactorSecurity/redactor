@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Redactor</title>
-    <link rel="icon" href="build/icon.ico" />
+    <link rel="icon" href="src/assets/icons/icon.ico" />
     <!-- CodeMirror CSS -->
     <link
       rel="stylesheet"
@@ -18,15 +18,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css"
     />
-
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="src/css/styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         darkMode: "class",
       };
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="theme-init.js"></script>
+    <script src="src/js/ui.js"></script>
   </head>
   <body
     class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 font-sans h-screen flex flex-col transition-colors duration-300 pb-8"
@@ -520,6 +519,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/display/placeholder.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-    <script src="app.js"></script>
+    <script src="src/js/redaction-core.js"></script>
   </body>
 </html>
