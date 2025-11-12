@@ -47,6 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const bulkSaveCancel = document.getElementById("bulk-save-cancel");
   const bulkSaveConfirm = document.getElementById("bulk-save-confirm");
   const openFileButton = document.getElementById("open-file-button");
+  const clearInputButton = document.getElementById("clear-input-button");
   const openFileMenu = document.getElementById("open-file-menu");
   const exampleFilesList = document.getElementById("example-files-list");
   const chooseLocalFileButton = document.getElementById(
@@ -243,6 +244,24 @@ document.addEventListener("DOMContentLoaded", () => {
     detectedFormatLabel.textContent = detected;
     renderTabs();
     renderContent();
+  }
+
+  function clearInputEditorContents() {
+    const activeTab = tabsState.find((t) => t.id === activeTabId);
+    if (!activeTab) return;
+    const editorsWereEmpty =
+      !inputEditor.getValue().length && !outputEditor.getValue().length;
+    activeTab.input = "";
+    activeTab.output = "";
+    activeTab.format = "Plain Text";
+    inputEditor.setValue("");
+    inputEditor.clearHistory();
+    outputEditor.setValue("");
+    detectedFormatLabel.textContent = "Plain Text";
+    if (!editorsWereEmpty) {
+      renderTabs();
+      renderContent();
+    }
   }
 
   function getExtensionForFormat(format) {
@@ -763,6 +782,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     localFileInput.addEventListener("change", handleLocalFileSelection);
   }
+
+  clearInputButton?.addEventListener("click", () => {
+    clearInputEditorContents();
+    closeOpenFileMenu();
+  });
 
   tabsContainer.addEventListener("click", (e) => {
     if (

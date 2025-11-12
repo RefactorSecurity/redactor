@@ -95,3 +95,32 @@ input[type="checkbox"]:checked::before {
 [data-tab-id]:hover .tab-drag-handle {
   color: #3b82f6 !important;
 }
+
+#open-file-button,
+#clear-input-button,
+#settings-button,
+#copy-button,
+#save-button,
+#bulk-save-button {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+#open-file-button:hover,
+#clear-input-button:hover,
+#settings-button:hover,
+#copy-button:hover,
+#save-button:hover,
+#bulk-save-button:hover {
+  color: #1d4ed8;
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+.dark #open-file-button:hover,
+.dark #clear-input-button:hover,
+.dark #settings-button:hover,
+.dark #copy-button:hover,
+.dark #save-button:hover,
+.dark #bulk-save-button:hover {
+  color: #93c5fd;
+  background-color: rgba(59, 130, 246, 0.25);
+}
