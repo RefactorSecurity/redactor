@@ -120,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeTabId = null;
   let tabCounter = 0;
   let autoNameCounter = 0;
+  let draggedTabId = null;
   let settings = {};
   const getFormatKey = (format) =>
     (format || "Unknown").trim() || "Unknown";
@@ -454,6 +455,31 @@ document.addEventListener("DOMContentLoaded", () => {
     render();
   }
 
+  function reorderTabs(draggedId, targetId, insertAfter = false) {
+    if (draggedId === targetId) return;
+    const draggedIndex = tabsState.findIndex((t) => t.id === draggedId);
+    if (draggedIndex === -1) return;
+    const [draggedTab] = tabsState.splice(draggedIndex, 1);
+    if (targetId == null) {
+      tabsState.push(draggedTab);
+    } else {
+      let targetIndex = tabsState.findIndex((t) => t.id === targetId);
+      if (targetIndex === -1) {
+        tabsState.push(draggedTab);
+      } else {
+        if (insertAfter) targetIndex += 1;
+        tabsState.splice(targetIndex, 0, draggedTab);
+      }
+    }
+    renderTabs();
+  }
+
+  function clearTabDragIndicators() {
+    tabsContainer
+      .querySelectorAll(".tab-drag-over")
+      .forEach((el) => el.classList.remove("tab-drag-over"));
+  }
+
   function render() {
     renderTabs();
     renderContent();
@@ -465,6 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const isActive = tab.id === activeTabId;
       const tabEl = document.createElement("div");
       tabEl.dataset.tabId = tab.id;
+      tabEl.setAttribute("draggable", "true");
       tabEl.className = `flex-shrink-0 flex items-center cursor-pointer border-r border-t border-gray-300 dark:border-gray-700 p-2 rounded-t-md mt-2 ${isActive
         ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -774,6 +801,65 @@ document.addEventListener("DOMContentLoaded", () => {
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") input.blur();
     });
+  });
+
+  tabsContainer.addEventListener("dragstart", (e) => {
+    const tabEl = e.target.closest("[data-tab-id]");
+    if (!tabEl) return;
+    if (e.target.closest("button")) {
+      e.preventDefault();
+      return;
+    }
+    draggedTabId = Number(tabEl.dataset.tabId);
+    const dt = e.dataTransfer;
+    if (dt) {
+      dt.effectAllowed = "move";
+      dt.setData("text/plain", String(draggedTabId));
+    }
+    tabEl.classList.add("tab-dragging");
+  });
+
+  tabsContainer.addEventListener("dragover", (e) => {
+    if (draggedTabId === null) return;
+    const tabEl = e.target.closest("[data-tab-id]");
+    e.preventDefault();
+    if (!tabEl || Number(tabEl.dataset.tabId) === draggedTabId) {
+      clearTabDragIndicators();
+      return;
+    }
+    clearTabDragIndicators();
+    tabEl.classList.add("tab-drag-over");
+    const dt = e.dataTransfer;
+    if (dt) dt.dropEffect = "move";
+  });
+
+  tabsContainer.addEventListener("drop", (e) => {
+    if (draggedTabId === null) return;
+    e.preventDefault();
+    const tabEl = e.target.closest("[data-tab-id]");
+    if (tabEl) {
+      const targetId = Number(tabEl.dataset.tabId);
+      if (targetId !== draggedTabId) {
+        const rect = tabEl.getBoundingClientRect();
+        const insertAfter = e.clientX > rect.left + rect.width / 2;
+        reorderTabs(draggedTabId, targetId, insertAfter);
+      }
+    } else {
+      reorderTabs(draggedTabId, null, true);
+    }
+    clearTabDragIndicators();
+    tabsContainer
+      .querySelectorAll(".tab-dragging")
+      .forEach((el) => el.classList.remove("tab-dragging"));
+    draggedTabId = null;
+  });
+
+  tabsContainer.addEventListener("dragend", () => {
+    clearTabDragIndicators();
+    tabsContainer
+      .querySelectorAll(".tab-dragging")
+      .forEach((el) => el.classList.remove("tab-dragging"));
+    draggedTabId = null;
   });
 
   inputEditor.on("change", (instance) => {
