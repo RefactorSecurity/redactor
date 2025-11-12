@@ -1,0 +1,10 @@
+# Environment & local config
+.env
+.env.*
+.DS_Store
+*.log
+.vscode/
+
+# Misc
+tmp/
+temp/
