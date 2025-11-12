@@ -430,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
       autoNameIndex: null,
       input: "",
       output: "",
-      format: "",
+      format: "Plain Text",
     };
     tabsState.push(newTab);
     return newTab;
@@ -556,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inputEditor.setOption("lineNumbers", settings.ui.syntaxHighlight);
     outputEditor.setOption("lineNumbers", settings.ui.syntaxHighlight);
 
-    detectedFormatLabel.textContent = activeTab.format;
+    detectedFormatLabel.textContent = activeTab.format || "Plain Text";
     setTimeout(() => {
       inputEditor.refresh();
       outputEditor.refresh();
@@ -644,6 +644,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeTab = tabsState.find((t) => t.id === activeTabId);
     if (!activeTab) return;
     Object.assign(activeTab, data);
+    if (!activeTab.format) {
+      activeTab.format = "Plain Text";
+    }
     if (!data.format || activeTab.isNameManual) return;
     const formatKey = getFormatKey(data.format);
     if (activeTab.autoNameFormat === formatKey) return;
