@@ -119,7 +119,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let tabsState = [];
   let activeTabId = null;
   let tabCounter = 0;
+  let autoNameCounter = 0;
   let settings = {};
+  const getFormatKey = (format) =>
+    (format || "Unknown").trim() || "Unknown";
+  const nextAutoNameIndex = () => {
+    autoNameCounter += 1;
+    return autoNameCounter;
+  };
   let syntaxUpdateTimer;
   const MAX_BULK_FILES = 50;
   const EXAMPLE_FILES = [
@@ -226,8 +233,10 @@ document.addEventListener("DOMContentLoaded", () => {
     activeTab.format = detected;
     if (sourceLabel) {
       activeTab.name = sourceLabel;
-      activeTab.originalName = sourceLabel;
+      activeTab.isNameManual = true;
     }
+    activeTab.autoNameFormat = null;
+    activeTab.autoNameIndex = null;
     inputEditor.setValue(content);
     outputEditor.setValue("");
     detectedFormatLabel.textContent = detected;
@@ -415,7 +424,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const newTab = {
       id: Date.now(),
       name: `Untitled ${tabCounter}`,
-      originalName: `Untitled ${tabCounter}`,
+      isNameManual: false,
+      autoNameFormat: null,
+      autoNameIndex: null,
       input: "",
       output: "",
       format: "",
@@ -597,16 +608,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateActiveTabData(data) {
     const activeTab = tabsState.find((t) => t.id === activeTabId);
-    if (activeTab) {
-      Object.assign(activeTab, data);
-      if (activeTab.originalName && data.format) {
-        const tabNumber = activeTab.originalName.split(" ")[1] || "";
-        let baseName = data.format.startsWith("HTTP")
-          ? data.format
-          : data.format.split(" ")[0];
-        activeTab.name = `${baseName} ${tabNumber}`.trim();
-      }
-    }
+    if (!activeTab) return;
+    Object.assign(activeTab, data);
+    if (!data.format || activeTab.isNameManual) return;
+    const formatKey = getFormatKey(data.format);
+    if (activeTab.autoNameFormat === formatKey) return;
+    const index = nextAutoNameIndex();
+    activeTab.autoNameFormat = formatKey;
+    activeTab.autoNameIndex = index;
+    activeTab.name = `${formatKey} ${index}`;
   }
 
   // --- Initial Setup and Event Listeners ---
@@ -751,15 +761,15 @@ document.addEventListener("DOMContentLoaded", () => {
     titleEl.replaceWith(input);
     input.focus();
     input.select();
-    const finishEditing = () => {
-      const newName = input.value.trim();
-      if (newName) {
-        tab.name = newName;
-        tab.originalName = null;
-      }
-      input.replaceWith(titleEl);
-      renderTabs();
-    };
+      const finishEditing = () => {
+        const newName = input.value.trim();
+        if (newName) {
+          tab.name = newName;
+          tab.isNameManual = true;
+        }
+        input.replaceWith(titleEl);
+        renderTabs();
+      };
     input.addEventListener("blur", finishEditing);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") input.blur();
