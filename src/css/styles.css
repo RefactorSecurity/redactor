@@ -82,3 +82,16 @@ input[type="checkbox"]:checked::before {
 .tab-drag-over {
   box-shadow: inset 0 -3px rgba(59, 130, 246, 0.85);
 }
+
+.tab-drag-handle {
+  cursor: grab;
+  font-size: 0.9rem;
+}
+
+.tab-drag-handle:active {
+  cursor: grabbing;
+}
+
+[data-tab-id]:hover .tab-drag-handle {
+  color: #3b82f6 !important;
+}

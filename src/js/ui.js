@@ -491,18 +491,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const isActive = tab.id === activeTabId;
       const tabEl = document.createElement("div");
       tabEl.dataset.tabId = tab.id;
-      tabEl.setAttribute("draggable", "true");
       tabEl.className = `flex-shrink-0 flex items-center cursor-pointer border-r border-t border-gray-300 dark:border-gray-700 p-2 rounded-t-md mt-2 ${isActive
         ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
         }`;
+      const dragHandle = document.createElement("span");
+      dragHandle.textContent = "⋮⋮";
+      dragHandle.title = "Drag tab";
+      dragHandle.setAttribute("role", "presentation");
+      dragHandle.setAttribute("draggable", "true");
+      dragHandle.className =
+        "tab-drag-handle px-1 mr-1 text-gray-500 dark:text-gray-300 select-none";
       const titleEl = document.createElement("span");
       titleEl.textContent = tab.name;
-      titleEl.className = "px-2";
+      titleEl.className = "tab-title px-2";
       const closeBtn = document.createElement("button");
       closeBtn.textContent = "×";
       closeBtn.className =
         "ml-2 w-5 h-5 flex items-center justify-center rounded-full hover:bg-red-500 hover:text-white";
+      tabEl.appendChild(dragHandle);
       tabEl.appendChild(titleEl);
       tabEl.appendChild(closeBtn);
       tabsContainer.appendChild(tabEl);
@@ -775,7 +782,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   tabsContainer.addEventListener("dblclick", (e) => {
-    const titleEl = e.target.closest("span");
+    const titleEl = e.target.closest(".tab-title");
     if (!titleEl) return;
     const tabEl = titleEl.closest("[data-tab-id]");
     const tabId = Number(tabEl.dataset.tabId);
@@ -804,12 +811,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   tabsContainer.addEventListener("dragstart", (e) => {
-    const tabEl = e.target.closest("[data-tab-id]");
+    const dragHandle = e.target.closest(".tab-drag-handle");
+    if (!dragHandle) return;
+    const tabEl = dragHandle.closest("[data-tab-id]");
     if (!tabEl) return;
-    if (e.target.closest("button")) {
-      e.preventDefault();
-      return;
-    }
     draggedTabId = Number(tabEl.dataset.tabId);
     const dt = e.dataTransfer;
     if (dt) {
