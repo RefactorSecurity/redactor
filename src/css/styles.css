@@ -124,3 +124,12 @@ input[type="checkbox"]:checked::before {
   color: #93c5fd;
   background-color: rgba(59, 130, 246, 0.25);
 }
+
+.editor-frame {
+  border: 1px solid #93c5fd;
+  box-sizing: border-box;
+}
+
+.dark .editor-frame {
+  border-color: #93c5fd;
+}
