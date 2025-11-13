@@ -608,10 +608,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const isActive = tab.id === activeTabId;
       const tabEl = document.createElement("div");
       tabEl.dataset.tabId = tab.id;
-      tabEl.className = `flex-shrink-0 flex items-center cursor-pointer border-r border-t border-gray-300 dark:border-gray-700 p-2 rounded-t-md mt-2 ${isActive
-        ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-        : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
-        }`;
+      tabEl.className = `flex-shrink-0 flex items-center cursor-pointer border-r border-t border-gray-300 dark:border-gray-700 px-2 py-1.5 rounded-t-md mt-2 ${
+        isActive
+          ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
+      }`;
       const dragHandle = document.createElement("span");
       dragHandle.textContent = "⋮⋮";
       dragHandle.title = "Drag tab";
