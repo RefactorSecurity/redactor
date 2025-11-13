@@ -53,6 +53,9 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const localFileInput = document.getElementById("local-file-input");
   const themeToggleButton = document.getElementById("theme-toggle-button");
+  const settingsUnsavedIndicator = document.getElementById(
+    "settings-unsaved-indicator"
+  );
   const settingsTabButtons = document.querySelectorAll(
     "[data-settings-tab]"
   );
@@ -237,6 +240,18 @@ document.addEventListener("DOMContentLoaded", () => {
       stagedSettings = cloneSettings(settings);
     }
     mutator(stagedSettings);
+    updateUnsavedIndicator();
+  }
+
+  function isSettingsDirty() {
+    if (!stagedSettings || !settingsBeforeModal) return false;
+    return JSON.stringify(stagedSettings) !== JSON.stringify(settingsBeforeModal);
+  }
+
+  function updateUnsavedIndicator() {
+    if (!settingsUnsavedIndicator) return;
+    const isDirty = isSettingsDirty();
+    settingsUnsavedIndicator.classList.toggle("hidden", !isDirty);
   }
 
   function populateExampleFiles() {
@@ -521,6 +536,7 @@ document.addEventListener("DOMContentLoaded", () => {
     applySettingsToInputs(stagedSettings);
     setActiveSettingsTab("general");
     isSettingsModalOpen = true;
+    updateUnsavedIndicator();
     settingsModal.classList.remove("hidden");
   }
 
@@ -541,6 +557,7 @@ document.addEventListener("DOMContentLoaded", () => {
     stagedSettings = null;
     settingsBeforeModal = null;
     isSettingsModalOpen = false;
+    updateUnsavedIndicator();
     settingsModal.classList.add("hidden");
   }
 
@@ -804,6 +821,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (stagedSettings) {
       stagedSettings.ui.useDarkTheme = newValue;
       settingDarkTheme.checked = newValue;
+      updateUnsavedIndicator();
     }
   });
 
