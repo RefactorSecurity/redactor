@@ -453,94 +453,130 @@
             class="settings-panel active space-y-6 flex-1 overflow-auto pr-2"
           >
             <div class="space-y-3 pl-2">
-              <div>
-                <label
-                  for="setting-ignored-words"
-                  class="block mb-2 text-sm font-medium"
-                  >Ignored Words (comma-separated)</label
-                >
+                <div>
+                  <label
+                    for="setting-ignored-words"
+                    class="block mb-2 text-sm font-medium"
+                    >Ignored Words (comma-separated)</label
+                  >
+                  <textarea
+                    id="setting-ignored-words"
+                    rows="3"
+                    class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                    placeholder="e.g. Bearer, token, secret"
+                  ></textarea>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Case-insensitive terms that remain untouched even in plain-text redaction.
+                  </p>
+                </div>
+                <div>
+                  <label
+                    for="setting-protected-fields"
+                    class="block mb-2 text-sm font-medium"
+                    >Protected Fields (comma-separated)</label
+                  >
                 <textarea
-                  id="setting-ignored-words"
-                  rows="3"
-                  class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                  placeholder="e.g. Bearer, token, secret"
-                ></textarea>
-              </div>
-              <div>
-                <label
-                  for="setting-protected-fields"
-                  class="block mb-2 text-sm font-medium"
-                  >Protected Fields (comma-separated)</label
-                >
-                <textarea
-                  id="setting-protected-fields"
-                  rows="3"
-                  class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                  placeholder="e.g. request_id, email, correlationId"
-                ></textarea>
+                    id="setting-protected-fields"
+                    rows="3"
+                    class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                    placeholder="e.g. request_id, email, correlationId"
+                  ></textarea>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Schema keys that always stay verbatim in JSON/YAML/XML outputs.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
           <div
             data-settings-panel="http"
             class="settings-panel space-y-6 flex-1 overflow-auto pr-2"
           >
             <div class="space-y-3 pl-2">
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="setting-redact-url-path"
-                  class="bg-gray-300 dark:bg-gray-600"
-                />
-                <span class="ml-3">Redact URL path</span>
-              </label>
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="setting-redact-host"
-                  class="bg-gray-300 dark:bg-gray-600"
-                  checked
-                />
-                <span class="ml-3">Redact Host header</span>
-              </label>
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="setting-redact-query-string"
-                  class="bg-gray-300 dark:bg-gray-600"
-                  checked
-                />
-                <span class="ml-3">Redact query string values</span>
-              </label>
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="setting-redact-param-names"
-                  class="bg-gray-300 dark:bg-gray-600"
-                />
-                <span class="ml-3">Redact parameter names</span>
-              </label>
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="setting-redact-cookies"
-                  class="bg-gray-300 dark:bg-gray-600"
-                  checked
-                />
-                <span class="ml-3"
-                  >Redact cookie/auth values (preserves names)</span
-                >
-              </label>
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  id="setting-redact-csrf"
-                  class="bg-gray-300 dark:bg-gray-600"
-                  checked
-                />
-                <span class="ml-3">Redact CSRF tokens</span>
-              </label>
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="setting-redact-url-path"
+                    class="bg-gray-300 dark:bg-gray-600"
+                  />
+                  <span class="ml-3">Redact URL path</span>
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
+                  Scrubs path segments (e.g., <code>/tenant/123</code>) that may contain IDs.
+                </p>
+              </div>
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="setting-redact-host"
+                    class="bg-gray-300 dark:bg-gray-600"
+                    checked
+                  />
+                  <span class="ml-3">Redact Host header</span>
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
+                  Replaces hostnames so internal domains never leave the page.
+                </p>
+              </div>
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="setting-redact-query-string"
+                    class="bg-gray-300 dark:bg-gray-600"
+                    checked
+                  />
+                  <span class="ml-3">Redact query string values</span>
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
+                  Keeps parameter names visible while anonymizing their values.
+                </p>
+              </div>
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="setting-redact-param-names"
+                    class="bg-gray-300 dark:bg-gray-600"
+                  />
+                  <span class="ml-3">Redact parameter names</span>
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
+                  Renames query or form keys when even the field names are sensitive.
+                </p>
+              </div>
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="setting-redact-cookies"
+                    class="bg-gray-300 dark:bg-gray-600"
+                    checked
+                  />
+                  <span class="ml-3"
+                    >Redact cookie/auth values (preserves names)</span
+                  >
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
+                  Masks cookie/auth header values but keeps cookie names intact.
+                </p>
+              </div>
+              <div>
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="setting-redact-csrf"
+                    class="bg-gray-300 dark:bg-gray-600"
+                    checked
+                  />
+                  <span class="ml-3">Redact CSRF tokens</span>
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
+                  Neutralizes common CSRF headers/form fields so tokens never leak.
+                </p>
+              </div>
             </div>
           </div>
 
