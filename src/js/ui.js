@@ -136,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let settings = {};
   let stagedSettings = null;
   let isSettingsModalOpen = false;
+  let settingsBeforeModal = null;
   const getFormatKey = (format) =>
     (format || "Unknown").trim() || "Unknown";
   const nextAutoNameIndex = () => {
@@ -515,6 +516,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function openSettingsModal() {
+    settingsBeforeModal = cloneSettings(settings);
     stagedSettings = cloneSettings(settings);
     applySettingsToInputs(stagedSettings);
     setActiveSettingsTab("general");
@@ -524,14 +526,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeSettingsModal(applyChanges = false) {
     if (applyChanges && stagedSettings) {
-      settings = stagedSettings;
+      settings = cloneSettings(stagedSettings);
       saveSettings();
       updateTheme(settings.ui.useDarkTheme);
       renderContent();
     } else {
-      applySettingsToInputs(settings);
+      if (settingsBeforeModal) {
+        settings = cloneSettings(settingsBeforeModal);
+        applySettingsToInputs(settings);
+      }
+      updateTheme(settings.ui.useDarkTheme);
+      renderContent();
     }
     stagedSettings = null;
+    settingsBeforeModal = null;
     isSettingsModalOpen = false;
     settingsModal.classList.add("hidden");
   }
@@ -863,14 +871,16 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
   settingDarkTheme.addEventListener("change", (e) => {
-    updateStagedSettings(
-      (draft) => (draft.ui.useDarkTheme = e.target.checked)
-    );
+    const newValue = e.target.checked;
+    updateStagedSettings((draft) => (draft.ui.useDarkTheme = newValue));
+    settings.ui.useDarkTheme = newValue;
+    updateTheme(newValue);
   });
   settingSyntaxHighlight.addEventListener("change", (e) => {
-    updateStagedSettings(
-      (draft) => (draft.ui.syntaxHighlight = e.target.checked)
-    );
+    const newValue = e.target.checked;
+    updateStagedSettings((draft) => (draft.ui.syntaxHighlight = newValue));
+    settings.ui.syntaxHighlight = newValue;
+    renderContent();
   });
 
   if (bulkSaveButton && bulkSaveModal) {
