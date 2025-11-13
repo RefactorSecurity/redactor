@@ -54,6 +54,18 @@ document.addEventListener("DOMContentLoaded", () => {
     "choose-local-file-button"
   );
   const localFileInput = document.getElementById("local-file-input");
+  const settingsTabButtons = document.querySelectorAll(
+    "[data-settings-tab]"
+  );
+  const settingsTabPanels = document.querySelectorAll(
+    "[data-settings-panel]"
+  );
+  const settingsSaveButton = document.getElementById(
+    "settings-save-button"
+  );
+  const settingsCancelButton = document.getElementById(
+    "settings-cancel-button"
+  );
 
   // Settings Modal Elements
   const settingsButton = document.getElementById("settings-button");
@@ -123,6 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let autoNameCounter = 0;
   let draggedTabId = null;
   let settings = {};
+  let stagedSettings = null;
+  let isSettingsModalOpen = false;
   const getFormatKey = (format) =>
     (format || "Unknown").trim() || "Unknown";
   const nextAutoNameIndex = () => {
@@ -165,6 +179,39 @@ document.addEventListener("DOMContentLoaded", () => {
       syntaxHighlight: true,
     },
   };
+
+  const cloneSettings = (source) =>
+    JSON.parse(JSON.stringify(source || {}));
+
+  const parseCommaSeparatedList = (value = "") =>
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+  function applySettingsToInputs(sourceSettings) {
+    if (!sourceSettings) return;
+    const data = sourceSettings.redaction;
+    const uiPrefs = sourceSettings.ui;
+    settingRedactUrlPath.checked = data.redactUrlPath;
+    settingRedactHost.checked = data.redactHost;
+    settingRedactQueryString.checked = data.redactQueryString;
+    settingRedactParamNames.checked = data.redactParamNames;
+    settingRedactCookies.checked = data.redactCookies;
+    settingRedactCsrf.checked = data.redactCsrf;
+    settingIgnoredWords.value = data.ignoredWords.join(", ");
+    settingProtectedFields.value = data.protectedFields.join(", ");
+    settingDarkTheme.checked = uiPrefs.useDarkTheme;
+    settingSyntaxHighlight.checked = uiPrefs.syntaxHighlight;
+  }
+
+  function updateStagedSettings(mutator) {
+    if (!isSettingsModalOpen) return;
+    if (!stagedSettings) {
+      stagedSettings = cloneSettings(settings);
+    }
+    mutator(stagedSettings);
+  }
 
   function populateExampleFiles() {
     if (!exampleFilesList) return;
@@ -423,19 +470,44 @@ document.addEventListener("DOMContentLoaded", () => {
       redaction: { ...defaultSettings.redaction, ...savedRedaction },
       ui: { ...defaultSettings.ui, ...saved?.ui },
     };
-    settingRedactUrlPath.checked = settings.redaction.redactUrlPath;
-    settingRedactHost.checked = settings.redaction.redactHost;
-    settingRedactQueryString.checked =
-      settings.redaction.redactQueryString;
-    settingRedactParamNames.checked = settings.redaction.redactParamNames;
-    settingRedactCookies.checked = settings.redaction.redactCookies;
-    settingRedactCsrf.checked = settings.redaction.redactCsrf;
-    settingIgnoredWords.value =
-      settings.redaction.ignoredWords.join(", ");
-    settingProtectedFields.value =
-      settings.redaction.protectedFields.join(", ");
-    settingDarkTheme.checked = settings.ui.useDarkTheme;
-    settingSyntaxHighlight.checked = settings.ui.syntaxHighlight;
+    applySettingsToInputs(settings);
+  }
+
+  function setActiveSettingsTab(tabName = "general") {
+    if (!settingsTabButtons.length || !settingsTabPanels.length) return;
+    settingsTabButtons.forEach((button) => {
+      const isActive = button.dataset.settingsTab === tabName;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-selected", isActive);
+      button.tabIndex = isActive ? 0 : -1;
+    });
+    settingsTabPanels.forEach((panel) => {
+      const isActive = panel.dataset.settingsPanel === tabName;
+      panel.classList.toggle("active", isActive);
+      panel.hidden = !isActive;
+    });
+  }
+
+  function openSettingsModal() {
+    stagedSettings = cloneSettings(settings);
+    applySettingsToInputs(stagedSettings);
+    setActiveSettingsTab("general");
+    isSettingsModalOpen = true;
+    settingsModal.classList.remove("hidden");
+  }
+
+  function closeSettingsModal(applyChanges = false) {
+    if (applyChanges && stagedSettings) {
+      settings = stagedSettings;
+      saveSettings();
+      updateTheme(settings.ui.useDarkTheme);
+      renderContent();
+    } else {
+      applySettingsToInputs(settings);
+    }
+    stagedSettings = null;
+    isSettingsModalOpen = false;
+    settingsModal.classList.add("hidden");
   }
 
   // --- Tab Management ---
@@ -683,64 +755,84 @@ document.addEventListener("DOMContentLoaded", () => {
     outputEditor.setOption("theme", newTheme);
   }
 
-  settingsButton.addEventListener("click", () =>
-    settingsModal.classList.remove("hidden")
-  );
+  settingsTabButtons.forEach((button) => {
+    button.addEventListener("click", () =>
+      setActiveSettingsTab(button.dataset.settingsTab || "general")
+    );
+  });
+
+  settingsButton.addEventListener("click", openSettingsModal);
   closeSettingsButton.addEventListener("click", () =>
-    settingsModal.classList.add("hidden")
+    closeSettingsModal(false)
   );
   settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) settingsModal.classList.add("hidden");
+    if (e.target === settingsModal) closeSettingsModal(false);
+  });
+  settingsSaveButton?.addEventListener("click", (e) => {
+    e.preventDefault();
+    closeSettingsModal(true);
+  });
+  settingsCancelButton?.addEventListener("click", (e) => {
+    e.preventDefault();
+    closeSettingsModal(false);
   });
 
   // Settings Listeners
   settingRedactUrlPath.addEventListener("change", (e) => {
-    settings.redaction.redactUrlPath = e.target.checked;
-    saveSettings();
+    updateStagedSettings(
+      (draft) => (draft.redaction.redactUrlPath = e.target.checked)
+    );
   });
   settingRedactHost.addEventListener("change", (e) => {
-    settings.redaction.redactHost = e.target.checked;
-    saveSettings();
+    updateStagedSettings(
+      (draft) => (draft.redaction.redactHost = e.target.checked)
+    );
   });
   settingRedactQueryString.addEventListener("change", (e) => {
-    settings.redaction.redactQueryString = e.target.checked;
-    saveSettings();
+    updateStagedSettings(
+      (draft) => (draft.redaction.redactQueryString = e.target.checked)
+    );
   });
   settingRedactParamNames.addEventListener("change", (e) => {
-    settings.redaction.redactParamNames = e.target.checked;
-    saveSettings();
+    updateStagedSettings(
+      (draft) => (draft.redaction.redactParamNames = e.target.checked)
+    );
   });
   settingRedactCookies.addEventListener("change", (e) => {
-    settings.redaction.redactCookies = e.target.checked;
-    saveSettings();
+    updateStagedSettings(
+      (draft) => (draft.redaction.redactCookies = e.target.checked)
+    );
   });
   settingRedactCsrf.addEventListener("change", (e) => {
-    settings.redaction.redactCsrf = e.target.checked;
-    saveSettings();
+    updateStagedSettings(
+      (draft) => (draft.redaction.redactCsrf = e.target.checked)
+    );
   });
   settingIgnoredWords.addEventListener("input", (e) => {
-    settings.redaction.ignoredWords = e.target.value
-      .split(",")
-      .map((word) => word.trim())
-      .filter((word) => word.length > 0);
-    saveSettings();
+    updateStagedSettings(
+      (draft) =>
+        (draft.redaction.ignoredWords = parseCommaSeparatedList(
+          e.target.value
+        ))
+    );
   });
   settingProtectedFields.addEventListener("input", (e) => {
-    settings.redaction.protectedFields = e.target.value
-      .split(",")
-      .map((field) => field.trim())
-      .filter((field) => field.length > 0);
-    saveSettings();
+    updateStagedSettings(
+      (draft) =>
+        (draft.redaction.protectedFields = parseCommaSeparatedList(
+          e.target.value
+        ))
+    );
   });
   settingDarkTheme.addEventListener("change", (e) => {
-    settings.ui.useDarkTheme = e.target.checked;
-    updateTheme(settings.ui.useDarkTheme);
-    saveSettings();
+    updateStagedSettings(
+      (draft) => (draft.ui.useDarkTheme = e.target.checked)
+    );
   });
   settingSyntaxHighlight.addEventListener("change", (e) => {
-    settings.ui.syntaxHighlight = e.target.checked;
-    saveSettings();
-    renderContent(); // Re-render to apply syntax highlighting change immediately
+    updateStagedSettings(
+      (draft) => (draft.ui.syntaxHighlight = e.target.checked)
+    );
   });
 
   if (bulkSaveButton && bulkSaveModal) {
@@ -948,6 +1040,11 @@ document.addEventListener("DOMContentLoaded", () => {
       !bulkSaveModal?.classList.contains("hidden")
     ) {
       closeBulkSaveModal();
+    } else if (
+      e.key === "Escape" &&
+      !settingsModal.classList.contains("hidden")
+    ) {
+      closeSettingsModal(false);
     }
   });
 
@@ -1005,6 +1102,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", checkTabOverflow);
 
   // --- Initialize First Tab & Settings ---
+  setActiveSettingsTab("general");
   populateExampleFiles();
   loadSettings();
   updateTheme(settings.ui.useDarkTheme);

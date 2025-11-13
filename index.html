@@ -379,7 +379,7 @@
       class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
     >
       <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg border border-gray-300 dark:border-gray-700"
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-300 dark:border-gray-700 w-[720px] max-w-[720px] h-[600px] max-h-[600px] flex flex-col"
       >
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-bold">Settings</h2>
@@ -391,131 +391,133 @@
           </button>
         </div>
 
-        <div class="space-y-6">
-          <!-- Redaction Settings -->
-          <div>
-            <h3
-              class="text-lg font-semibold mb-3 border-b border-gray-300 dark:border-gray-600 pb-2"
+        <div class="space-y-6 flex-1 overflow-hidden flex flex-col">
+          <div
+            class="settings-tabs border-b border-gray-300 dark:border-gray-700 pb-3"
+          >
+            <button
+              type="button"
+              class="settings-tab-button active"
+              data-settings-tab="general"
             >
-              Redaction Settings
-            </h3>
-            <div class="space-y-5 pl-2">
+              General
+            </button>
+            <button
+              type="button"
+              class="settings-tab-button"
+              data-settings-tab="http"
+            >
+              HTTP
+            </button>
+            <button
+              type="button"
+              class="settings-tab-button"
+              data-settings-tab="ui"
+            >
+              UI
+            </button>
+          </div>
+
+          <div
+            data-settings-panel="general"
+            class="settings-panel active space-y-6 flex-1 overflow-auto pr-2"
+          >
+            <div class="space-y-3 pl-2">
               <div>
-                <h4
-                  class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                <label
+                  for="setting-ignored-words"
+                  class="block mb-2 text-sm font-medium"
+                  >Ignored Words (comma-separated)</label
                 >
-                  General Data Controls
-                </h4>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Applies to every format (JSON, YAML, XML, plain text, etc.).
-                </p>
-                <div class="space-y-3 mt-3">
-                  <div>
-                    <label
-                      for="setting-ignored-words"
-                      class="block mb-2 text-sm font-medium"
-                      >Ignored Words (comma-separated)</label
-                    >
-                    <textarea
-                      id="setting-ignored-words"
-                      rows="3"
-                      class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                      placeholder="e.g. Bearer, token, secret"
-                    ></textarea>
-                  </div>
-                  <div>
-                    <label
-                      for="setting-protected-fields"
-                      class="block mb-2 text-sm font-medium"
-                      >Protected Fields (comma-separated)</label
-                    >
-                    <textarea
-                      id="setting-protected-fields"
-                      rows="3"
-                      class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                      placeholder="e.g. request_id, email, correlationId"
-                    ></textarea>
-                  </div>
-                </div>
+                <textarea
+                  id="setting-ignored-words"
+                  rows="3"
+                  class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                  placeholder="e.g. Bearer, token, secret"
+                ></textarea>
               </div>
-              <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h4
-                  class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+              <div>
+                <label
+                  for="setting-protected-fields"
+                  class="block mb-2 text-sm font-medium"
+                  >Protected Fields (comma-separated)</label
                 >
-                  HTTP-Specific Controls
-                </h4>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Only affects HTTP requests/responses and form bodies.
-                </p>
-                <div class="space-y-3 mt-3">
-                  <label class="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="setting-redact-url-path"
-                      class="bg-gray-300 dark:bg-gray-600"
-                    />
-                    <span class="ml-3">Redact URL path</span>
-                  </label>
-                  <label class="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="setting-redact-host"
-                      class="bg-gray-300 dark:bg-gray-600"
-                      checked
-                    />
-                    <span class="ml-3">Redact Host header</span>
-                  </label>
-                  <label class="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="setting-redact-query-string"
-                      class="bg-gray-300 dark:bg-gray-600"
-                      checked
-                    />
-                    <span class="ml-3">Redact query string values</span>
-                  </label>
-                  <label class="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="setting-redact-param-names"
-                      class="bg-gray-300 dark:bg-gray-600"
-                    />
-                    <span class="ml-3">Redact parameter names</span>
-                  </label>
-                  <label class="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="setting-redact-cookies"
-                      class="bg-gray-300 dark:bg-gray-600"
-                      checked
-                    />
-                    <span class="ml-3"
-                      >Redact cookie/auth values (preserves names)</span
-                    >
-                  </label>
-                  <label class="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="setting-redact-csrf"
-                      class="bg-gray-300 dark:bg-gray-600"
-                      checked
-                    />
-                    <span class="ml-3"
-                      >Redact CSRF tokens (in headers &amp; body)</span
-                    >
-                  </label>
-                </div>
+                <textarea
+                  id="setting-protected-fields"
+                  rows="3"
+                  class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                  placeholder="e.g. request_id, email, correlationId"
+                ></textarea>
               </div>
             </div>
           </div>
 
-          <!-- UI Settings -->
-          <div>
-            <h3
-              class="text-lg font-semibold mb-3 border-b border-gray-300 dark:border-gray-600 pb-2"
-            >
-              UI Settings
-            </h3>
+          <div
+            data-settings-panel="http"
+            class="settings-panel space-y-6 flex-1 overflow-auto pr-2"
+          >
+            <div class="space-y-3 pl-2">
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="setting-redact-url-path"
+                  class="bg-gray-300 dark:bg-gray-600"
+                />
+                <span class="ml-3">Redact URL path</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="setting-redact-host"
+                  class="bg-gray-300 dark:bg-gray-600"
+                  checked
+                />
+                <span class="ml-3">Redact Host header</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="setting-redact-query-string"
+                  class="bg-gray-300 dark:bg-gray-600"
+                  checked
+                />
+                <span class="ml-3">Redact query string values</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="setting-redact-param-names"
+                  class="bg-gray-300 dark:bg-gray-600"
+                />
+                <span class="ml-3">Redact parameter names</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="setting-redact-cookies"
+                  class="bg-gray-300 dark:bg-gray-600"
+                  checked
+                />
+                <span class="ml-3"
+                  >Redact cookie/auth values (preserves names)</span
+                >
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="setting-redact-csrf"
+                  class="bg-gray-300 dark:bg-gray-600"
+                  checked
+                />
+                <span class="ml-3">Redact CSRF tokens</span>
+              </label>
+            </div>
+          </div>
+
+          <div
+            data-settings-panel="ui"
+            class="settings-panel space-y-6 flex-1 overflow-auto pr-2"
+          >
             <div class="space-y-3 pl-2">
               <label class="flex items-center cursor-pointer">
                 <input
@@ -535,6 +537,25 @@
                 <span class="ml-3">Enable Syntax Highlighting</span>
               </label>
             </div>
+          </div>
+
+          <div
+            class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700"
+          >
+            <button
+              id="settings-cancel-button"
+              type="button"
+              class="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150"
+            >
+              Cancel
+            </button>
+            <button
+              id="settings-save-button"
+              type="button"
+              class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150"
+            >
+              Save
+            </button>
           </div>
         </div>
       </div>

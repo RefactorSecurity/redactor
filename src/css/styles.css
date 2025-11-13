@@ -133,3 +133,42 @@ input[type="checkbox"]:checked::before {
 .dark .editor-frame {
   border-color: #93c5fd;
 }
+
+.settings-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.settings-tab-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  color: #4b5563;
+  background-color: transparent;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.dark .settings-tab-button {
+  color: #d1d5db;
+}
+
+.settings-tab-button.active {
+  background-color: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.dark .settings-tab-button.active {
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.6);
+}
+
+.settings-panel {
+  display: none;
+}
+
+.settings-panel.active {
+  display: block;
+}
