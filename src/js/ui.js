@@ -1,18 +1,16 @@
-const savedSettings =
+const persistedSettings =
   JSON.parse(localStorage.getItem("redactorSettings")) || {};
-const shouldUseDark =
-  savedSettings.ui?.useDarkTheme === true ||
-  (savedSettings.ui?.useDarkTheme === undefined &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches);
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+const initialDarkMode =
+  persistedSettings.ui?.useDarkTheme ??
+  (persistedSettings.ui?.useDarkTheme === undefined ? prefersDark : false);
 
 function setRootTheme(isDark) {
   document.documentElement.classList.toggle("dark", Boolean(isDark));
-  if (document.body) {
-    document.body.classList.toggle("dark", Boolean(isDark));
-  }
+  document.body?.classList.toggle("dark", Boolean(isDark));
 }
 
-setRootTheme(shouldUseDark);
+setRootTheme(initialDarkMode);
 
 document.addEventListener("DOMContentLoaded", () => {
   const core = globalThis.RedactorCore;
@@ -54,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "choose-local-file-button"
   );
   const localFileInput = document.getElementById("local-file-input");
+  const themeToggleButton = document.getElementById("theme-toggle-button");
   const settingsTabButtons = document.querySelectorAll(
     "[data-settings-tab]"
   );
@@ -188,6 +187,32 @@ document.addEventListener("DOMContentLoaded", () => {
       .split(",")
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
+
+  function renderThemeToggleIcon(isDark) {
+    if (!themeToggleButton) return;
+    const sunIcon = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+    `;
+    const moonIcon = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"></path>
+      </svg>
+    `;
+    themeToggleButton.innerHTML = isDark ? sunIcon : moonIcon;
+    themeToggleButton.title = isDark
+      ? "Switch to light theme"
+      : "Switch to dark theme";
+  }
 
   function applySettingsToInputs(sourceSettings) {
     if (!sourceSettings) return;
@@ -471,6 +496,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ui: { ...defaultSettings.ui, ...saved?.ui },
     };
     applySettingsToInputs(settings);
+    setRootTheme(settings.ui.useDarkTheme);
   }
 
   function setActiveSettingsTab(tabName = "general") {
@@ -753,12 +779,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const newTheme = isDark ? "material-darker" : "eclipse";
     inputEditor.setOption("theme", newTheme);
     outputEditor.setOption("theme", newTheme);
+    renderThemeToggleIcon(isDark);
   }
 
   settingsTabButtons.forEach((button) => {
     button.addEventListener("click", () =>
       setActiveSettingsTab(button.dataset.settingsTab || "general")
     );
+  });
+  themeToggleButton?.addEventListener("click", () => {
+    const newValue = !settings.ui.useDarkTheme;
+    settings.ui.useDarkTheme = newValue;
+    saveSettings();
+    updateTheme(newValue);
+    if (stagedSettings) {
+      stagedSettings.ui.useDarkTheme = newValue;
+      settingDarkTheme.checked = newValue;
+    }
   });
 
   settingsButton.addEventListener("click", openSettingsModal);
@@ -1108,8 +1145,8 @@ document.addEventListener("DOMContentLoaded", () => {
   updateTheme(settings.ui.useDarkTheme);
   const firstTab = createNewTab();
   activeTabId = firstTab.id;
-  fetchCommonWords().catch((error) =>
-    console.error("Failed to preload word list:", error)
-  );
-  render();
+fetchCommonWords().catch((error) =>
+  console.error("Failed to preload word list:", error)
+);
+render();
 });

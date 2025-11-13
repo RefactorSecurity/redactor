@@ -98,6 +98,7 @@ input[type="checkbox"]:checked::before {
 
 #open-file-button,
 #clear-input-button,
+#theme-toggle-button,
 #settings-button,
 #copy-button,
 #save-button,
@@ -107,6 +108,7 @@ input[type="checkbox"]:checked::before {
 
 #open-file-button:hover,
 #clear-input-button:hover,
+#theme-toggle-button:hover,
 #settings-button:hover,
 #copy-button:hover,
 #save-button:hover,
@@ -117,6 +119,7 @@ input[type="checkbox"]:checked::before {
 
 .dark #open-file-button:hover,
 .dark #clear-input-button:hover,
+.dark #theme-toggle-button:hover,
 .dark #settings-button:hover,
 .dark #copy-button:hover,
 .dark #save-button:hover,
