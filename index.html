@@ -404,16 +404,30 @@
     </div>
 
     <!-- Powered by Label -->
-    <div
-      class="fixed bottom-1 right-2 text-xs text-gray-500 dark:text-gray-400"
-    >
-      Found any bugs? Please submit an issue to
-      <a
-        href="https://github.com"
-        target="_blank"
-        class="underline hover:text-blue-500 dark:hover:text-blue-400"
-        >GitHub</a
-      >. Powered by Refactor Security
+    <div class="fixed bottom-2 right-2 text-xs">
+      <div
+        class="flex gap-3 items-center bg-white/80 dark:bg-gray-900/80 backdrop-blur px-3 py-1.5 rounded-full shadow border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+      >
+        <span class="font-semibold text-gray-700 dark:text-gray-100"
+          >Found a bug?</span
+        >
+        <a
+          href="https://github.com/RefactorSecurity/redactor/issues"
+          target="_blank"
+          class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+          >Open an issue</a
+        >
+        <span class="text-gray-400 dark:text-gray-500">•</span>
+        <span>
+          Powered by
+          <a
+            href="https://refactorsecurity.com"
+            target="_blank"
+            class="underline hover:text-blue-500 dark:hover:text-blue-400"
+            >Refactor Security</a
+          >
+        </span>
+      </div>
     </div>
 
     <!-- Settings Modal -->
@@ -480,38 +494,40 @@
             class="settings-panel active space-y-6 flex-1 overflow-auto pr-2"
           >
             <div class="space-y-3 pl-2">
-                <div>
-                  <label
-                    for="setting-ignored-words"
-                    class="block mb-2 text-sm font-medium"
-                    >Ignored Words (comma-separated)</label
-                  >
-                  <textarea
-                    id="setting-ignored-words"
-                    rows="3"
-                    class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                    placeholder="e.g. Bearer, token, secret"
-                  ></textarea>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Case-insensitive terms that remain untouched even in plain-text redaction.
-                  </p>
-                </div>
-                <div>
-                  <label
-                    for="setting-protected-fields"
-                    class="block mb-2 text-sm font-medium"
-                    >Protected Fields (comma-separated)</label
-                  >
+              <div>
+                <label
+                  for="setting-ignored-words"
+                  class="block mb-2 text-sm font-medium"
+                  >Ignored Words (comma-separated)</label
+                >
                 <textarea
-                    id="setting-protected-fields"
-                    rows="3"
-                    class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                    placeholder="e.g. request_id, email, correlationId"
-                  ></textarea>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Schema keys that always stay verbatim in JSON/YAML/XML outputs.
-                  </p>
-                </div>
+                  id="setting-ignored-words"
+                  rows="3"
+                  class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                  placeholder="e.g. Bearer, token, secret"
+                ></textarea>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Case-insensitive terms that remain untouched even in
+                  plain-text redaction.
+                </p>
+              </div>
+              <div>
+                <label
+                  for="setting-protected-fields"
+                  class="block mb-2 text-sm font-medium"
+                  >Protected Fields (comma-separated)</label
+                >
+                <textarea
+                  id="setting-protected-fields"
+                  rows="3"
+                  class="w-full p-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                  placeholder="e.g. request_id, email, correlationId"
+                ></textarea>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Schema keys that always stay verbatim in JSON/YAML/XML
+                  outputs.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -534,7 +550,8 @@
                     >Sort keys alphabetically</span
                   >
                   <span class="block text-xs text-gray-500 dark:text-gray-400">
-                    When enabled, JSON objects are re-ordered A→Z prior to display. Leave unchecked to preserve the original key order.
+                    When enabled, JSON objects are re-ordered A→Z prior to
+                    display. Leave unchecked to preserve the original key order.
                   </span>
                 </span>
               </label>
@@ -547,8 +564,8 @@
           >
             <div class="space-y-4 pl-2">
               <p class="text-sm text-gray-600 dark:text-gray-400">
-                Tell Redactor how to interpret CSV uploads so headers stay untouched
-                while data rows are anonymized correctly.
+                Tell Redactor how to interpret CSV uploads so headers stay
+                untouched while data rows are anonymized correctly.
               </p>
               <div class="space-y-3">
                 <label class="flex items-start cursor-pointer">
@@ -563,8 +580,11 @@
                     <span class="block text-sm font-medium"
                       >First row contains column titles</span
                     >
-                    <span class="block text-xs text-gray-500 dark:text-gray-400">
-                      Leaves the header row intact and uses the titles for protected-field matching.
+                    <span
+                      class="block text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      Leaves the header row intact and uses the titles for
+                      protected-field matching.
                     </span>
                   </span>
                 </label>
@@ -579,8 +599,11 @@
                     <span class="block text-sm font-medium"
                       >Treat first row as data</span
                     >
-                    <span class="block text-xs text-gray-500 dark:text-gray-400">
-                      Redacts every row the same way—perfect for files that omit column headers.
+                    <span
+                      class="block text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      Redacts every row the same way—perfect for files that omit
+                      column headers.
                     </span>
                   </span>
                 </label>
@@ -603,7 +626,8 @@
                   <span class="ml-3">Redact URL path</span>
                 </label>
                 <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
-                  Scrubs path segments (e.g., <code>/tenant/123</code>) that may contain IDs.
+                  Scrubs path segments (e.g., <code>/tenant/123</code>) that may
+                  contain IDs.
                 </p>
               </div>
               <div>
@@ -644,7 +668,8 @@
                   <span class="ml-3">Redact parameter names</span>
                 </label>
                 <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
-                  Renames query or form keys when even the field names are sensitive.
+                  Renames query or form keys when even the field names are
+                  sensitive.
                 </p>
               </div>
               <div>
@@ -674,7 +699,8 @@
                   <span class="ml-3">Redact CSRF tokens</span>
                 </label>
                 <p class="text-xs text-gray-500 dark:text-gray-400 ml-8 mt-1">
-                  Neutralizes common CSRF headers/form fields so tokens never leak.
+                  Neutralizes common CSRF headers/form fields so tokens never
+                  leak.
                 </p>
               </div>
             </div>
