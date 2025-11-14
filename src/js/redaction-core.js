@@ -592,7 +592,9 @@
         if (currentRedactor.isProtectedField(key)) {
           return headerLine;
         }
-
+        if (lowerKey === "content-disposition") {
+          return formatContentDisposition(value, currentRedactor);
+        }
         if (
           redactionSettings.redactCookies &&
           (lowerKey === "cookie" || lowerKey === "set-cookie")
@@ -676,6 +678,38 @@
     };
   }
 
+  function formatContentDisposition(value, currentRedactor) {
+    const parts = value.split(";");
+    if (!parts.length) return `Content-Disposition: ${value}`;
+    const normalized = parts[0].trim().toLowerCase();
+    if (normalized !== "attachment") {
+      return `Content-Disposition: ${value}`;
+    }
+    const updatedParts = parts.map((part) => part.trim());
+    const filenamePartIndex = updatedParts.findIndex((part) =>
+      part.toLowerCase().startsWith("filename=")
+    );
+    if (filenamePartIndex === -1) {
+      return `Content-Disposition: ${value}`;
+    }
+    const originalPart = updatedParts[filenamePartIndex];
+    const match = originalPart.match(/filename=(?:"([^"]+)"|([^;]+))/i);
+    if (!match) {
+      return `Content-Disposition: ${value}`;
+    }
+    const originalFilename = match[1] || match[2];
+    const lastDot = originalFilename.lastIndexOf(".");
+    const extension =
+      lastDot !== -1 ? originalFilename.slice(lastDot) : "";
+    const fakeBase = currentRedactor.redactString(
+      lastDot !== -1
+        ? originalFilename.slice(0, lastDot)
+        : originalFilename
+    );
+    const placeholder = `${fakeBase}${extension}`;
+    updatedParts[filenamePartIndex] = `filename="${placeholder}"`;
+    return `Content-Disposition: ${updatedParts.join("; ")}`;
+  }
   function computeRedactionResult(
     format,
     text,
