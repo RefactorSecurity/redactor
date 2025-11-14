@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "setting-syntax-highlight"
   );
   const CSV_MODE_NAME = "csv";
+  const FORM_MODE_NAME = "form-urlencoded";
 
   function ensureCsvModeRegistered() {
     if (
@@ -149,7 +150,70 @@ document.addEventListener("DOMContentLoaded", () => {
     CodeMirror.defineMIME("text/csv", CSV_MODE_NAME);
   }
 
+  function ensureFormModeRegistered() {
+    if (
+      typeof CodeMirror === "undefined" ||
+      typeof CodeMirror.defineSimpleMode !== "function"
+    )
+      return;
+    if (CodeMirror.modes?.[FORM_MODE_NAME]) return;
+    CodeMirror.defineSimpleMode(FORM_MODE_NAME, {
+      start: [
+        {
+          regex: /[^=&\s]+/,
+          token: "attribute",
+          next: "afterKey",
+        },
+        {
+          regex: /&/,
+          token: "punctuation",
+        },
+        {
+          regex: /\s+/,
+          token: null,
+        },
+      ],
+      afterKey: [
+        {
+          regex: /=/,
+          token: "operator",
+          next: "value",
+        },
+        {
+          regex: /&/,
+          token: "punctuation",
+          next: "start",
+        },
+        {
+          regex: /\s+/,
+          token: null,
+        },
+        {
+          regex: /[^=&\s]+/,
+          token: "attribute",
+        },
+      ],
+      value: [
+        {
+          regex: /[^&]+/,
+          token: "string",
+          next: "start",
+        },
+        {
+          regex: /&/,
+          token: "punctuation",
+          next: "start",
+        },
+      ],
+      meta: {
+        lineComment: "",
+      },
+    });
+    CodeMirror.defineMIME("application/x-www-form-urlencoded", FORM_MODE_NAME);
+  }
+
   ensureCsvModeRegistered();
+  ensureFormModeRegistered();
 
   // --- CodeMirror Editors ---
   const createEditor = (el, options) =>
@@ -786,7 +850,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (format === "XML") return "xml";
     if (format === "YAML") return "yaml";
     if (format?.startsWith?.("HTTP")) return "http";
-    if (format?.startsWith?.("CSV")) return "csv";
+    if (format?.startsWith?.("CSV")) return CSV_MODE_NAME;
+    if (format === "Form URL-Encoded") return FORM_MODE_NAME;
     return "text/plain";
   }
 
