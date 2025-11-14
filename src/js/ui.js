@@ -57,6 +57,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const bulkSaveStatus = document.getElementById("bulk-save-status");
   const bulkSaveCancel = document.getElementById("bulk-save-cancel");
   const bulkSaveConfirm = document.getElementById("bulk-save-confirm");
+  const fileConfirmationModal = document.getElementById(
+    "file-confirmation-modal"
+  );
+  const fileConfirmationMessage = document.getElementById(
+    "file-confirmation-message"
+  );
+  const fileConfirmationFileName = document.getElementById(
+    "file-confirmation-file-name"
+  );
+  const fileConfirmationWarnings = document.getElementById(
+    "file-confirmation-warnings"
+  );
+  const fileConfirmationCancel = document.getElementById(
+    "file-confirmation-cancel"
+  );
+  const fileConfirmationConfirm = document.getElementById(
+    "file-confirmation-confirm"
+  );
+  const fileConfirmationClose = document.getElementById(
+    "file-confirmation-close"
+  );
   const openFileButton = document.getElementById("open-file-button");
   const clearInputButton = document.getElementById("clear-input-button");
   const openFileMenu = document.getElementById("open-file-menu");
@@ -125,6 +146,16 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const CSV_MODE_NAME = "csv";
   const FORM_MODE_NAME = "form-urlencoded";
+  const LARGE_FILE_CONFIRMATION_BYTES = 100 * 1024;
+  const SUSPICIOUS_OFFICE_MIME_TYPES = new Set([
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ]);
+  let pendingFileConfirmationResolve = null;
 
   function ensureCsvModeRegistered() {
     if (
@@ -463,6 +494,102 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
+  function collectFileImportWarnings(file) {
+    const warnings = [];
+    if (!file) return warnings;
+    if (
+      typeof file.size === "number" &&
+      file.size > LARGE_FILE_CONFIRMATION_BYTES
+    ) {
+      const kbSize = (file.size / 1024).toFixed(1);
+      warnings.push(`The file is ${kbSize} KB which may be slow to load.`);
+    }
+    const mimeType = (file.type || "").toLowerCase();
+    if (mimeType) {
+      const isImage = mimeType.startsWith("image/");
+      const isSvg = mimeType === "image/svg+xml";
+      if (isImage && !isSvg) {
+        warnings.push(`The file appears to be an image (${mimeType}).`);
+      } else if (mimeType === "application/pdf") {
+        warnings.push("The file appears to be a PDF document.");
+      } else if (SUSPICIOUS_OFFICE_MIME_TYPES.has(mimeType)) {
+        warnings.push("The file appears to be an Office document.");
+      }
+    }
+    return warnings;
+  }
+
+  function showFileConfirmationModal({ fileName, warnings, summary }) {
+    if (!fileConfirmationModal) return;
+    if (fileConfirmationFileName) {
+      fileConfirmationFileName.textContent = fileName || "Selected file";
+    }
+    if (fileConfirmationMessage) {
+      fileConfirmationMessage.textContent =
+        summary ||
+        "We noticed potential issues with this file. Make sure you trust it before importing.";
+    }
+    if (fileConfirmationWarnings) {
+      fileConfirmationWarnings.innerHTML = "";
+      warnings.forEach((warning) => {
+        const li = document.createElement("li");
+        li.textContent = warning;
+        fileConfirmationWarnings.appendChild(li);
+      });
+    }
+    fileConfirmationModal.classList.remove("hidden");
+  }
+
+  function hideFileConfirmationModal() {
+    if (!fileConfirmationModal) return;
+    fileConfirmationModal.classList.add("hidden");
+    if (fileConfirmationWarnings) {
+      fileConfirmationWarnings.innerHTML = "";
+    }
+    if (fileConfirmationFileName) {
+      fileConfirmationFileName.textContent = "";
+    }
+  }
+
+  function settleFileConfirmationModal(decision) {
+    hideFileConfirmationModal();
+    if (typeof pendingFileConfirmationResolve === "function") {
+      pendingFileConfirmationResolve(Boolean(decision));
+      pendingFileConfirmationResolve = null;
+    }
+  }
+
+  function cancelFileConfirmationModal() {
+    settleFileConfirmationModal(false);
+  }
+
+  function confirmFileImportIfNeeded(file) {
+    const warnings = collectFileImportWarnings(file);
+    if (!warnings.length) return Promise.resolve(true);
+    const fileLabel = file?.name ? `"${file.name}"` : "the selected file";
+    if (!fileConfirmationModal) {
+      const fallbackMessage = [
+        `Import ${fileLabel}?`,
+        "",
+        ...warnings,
+        "",
+        "Do you want to continue?",
+      ].join("\n");
+      return Promise.resolve(window.confirm(fallbackMessage));
+    }
+    return new Promise((resolve) => {
+      if (pendingFileConfirmationResolve) {
+        settleFileConfirmationModal(false);
+      }
+      pendingFileConfirmationResolve = resolve;
+      showFileConfirmationModal({
+        fileName: file?.name || "Selected file",
+        warnings,
+        summary: `We noticed potential issues with ${fileLabel}. Make sure you trust this file before importing it.`,
+      });
+    });
+  }
+
   function importFileIntoInputEditor(file, { onComplete } = {}) {
     if (!file) return;
     const reader = new FileReader();
@@ -490,9 +617,14 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsText(file);
   }
 
-  function handleLocalFileSelection(event) {
+  async function handleLocalFileSelection(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    const shouldImport = await confirmFileImportIfNeeded(file);
+    if (!shouldImport) {
+      if (localFileInput) localFileInput.value = "";
+      return;
+    }
     importFileIntoInputEditor(file, {
       onComplete: () => {
         if (localFileInput) localFileInput.value = "";
@@ -555,13 +687,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    inputEditorWrapper.addEventListener("drop", (event) => {
+    inputEditorWrapper.addEventListener("drop", async (event) => {
       if (!containsFiles(event)) return;
       event.preventDefault();
       const file = event.dataTransfer?.files?.[0];
       resetDragState();
       closeOpenFileMenu();
-      if (file) {
+      if (!file) return;
+      const shouldImport = await confirmFileImportIfNeeded(file);
+      if (shouldImport) {
         importFileIntoInputEditor(file);
       }
     });
@@ -1261,6 +1395,26 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (fileConfirmationModal) {
+    fileConfirmationCancel?.addEventListener("click", (e) => {
+      e.preventDefault();
+      cancelFileConfirmationModal();
+    });
+    fileConfirmationClose?.addEventListener("click", (e) => {
+      e.preventDefault();
+      cancelFileConfirmationModal();
+    });
+    fileConfirmationConfirm?.addEventListener("click", (e) => {
+      e.preventDefault();
+      settleFileConfirmationModal(true);
+    });
+    fileConfirmationModal.addEventListener("click", (e) => {
+      if (e.target === fileConfirmationModal) {
+        cancelFileConfirmationModal();
+      }
+    });
+  }
+
   if (openFileButton && openFileMenu) {
     openFileButton.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1458,6 +1612,11 @@ document.addEventListener("DOMContentLoaded", () => {
       !settingsModal.classList.contains("hidden")
     ) {
       closeSettingsModal(false);
+    } else if (
+      e.key === "Escape" &&
+      !fileConfirmationModal?.classList.contains("hidden")
+    ) {
+      cancelFileConfirmationModal();
     }
   });
 
