@@ -1,0 +1,17 @@
+POST /upload HTTP/1.1
+Host: example.com
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Length: 345
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+User profile data
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="users.csv"
+Content-Type: text/csv
+
+Name,Email,Age
+Alice,alice@example.com,28
+Bob,bob@example.com,34
+------WebKitFormBoundary7MA4YWxkTrZu0gW--

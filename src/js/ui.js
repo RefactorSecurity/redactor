@@ -275,6 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { label: "HTTP POST (no query string)", file: "post_no_query.http" },
     { label: "HTTP POST (with query string)", file: "post_with_query.http" },
     { label: "HTTP POST (XML)", file: "post_xml.http" },
+    { label: "HTTP POST (multi-part)", file: "post_multipart.http" },
     { label: "HTTP Response (JSON)", file: "response_json.http" },
     { label: "HTTP Response (CSV)", file: "response_csv.http" },
     { label: "Query Parameters Sample", file: "query.txt" },

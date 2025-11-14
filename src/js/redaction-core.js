@@ -360,7 +360,12 @@
     };
   }
 
-  function redactBodyContent(bodyText, currentRedactor, contentType = "") {
+  function redactBodyContent(
+    bodyText,
+    currentRedactor,
+    contentType = "",
+    rawContentType = ""
+  ) {
     if (!bodyText) return "";
 
     const runJsonRedaction = () => {
@@ -454,6 +459,17 @@
     };
 
     const mainContentType = contentType.split(";")[0].trim();
+    if (mainContentType.startsWith("multipart/form-data")) {
+      const boundary = extractBoundary(rawContentType);
+      if (!boundary) {
+        return runPlainTextRedaction();
+      }
+      try {
+        return redactMultipartFormData(bodyText, currentRedactor, boundary);
+      } catch (e) {
+        return runPlainTextRedaction();
+      }
+    }
 
     const contentMap = {
       "application/json": runJsonRedaction,
@@ -516,11 +532,13 @@
     let formattedInput = text;
 
     let contentType = "";
+    let rawContentType = "";
     const contentTypeHeader = headerLinesOnly.find((h) =>
       h.toLowerCase().startsWith("content-type:")
     );
     if (contentTypeHeader) {
-      contentType = contentTypeHeader.split(":")[1].trim().split(";")[0];
+      rawContentType = contentTypeHeader.split(":")[1].trim();
+      contentType = rawContentType.split(";")[0].trim();
     }
 
     if (
@@ -665,7 +683,8 @@
     const redactedBody = redactBodyContent(
       body,
       currentRedactor,
-      contentType
+      contentType,
+      rawContentType
     );
     const finalRedacted = `${redactedStartLine}\n${redactedHeaders}${
       body ? "\n\n" + redactedBody : ""
@@ -678,11 +697,131 @@
     };
   }
 
-  function formatContentDisposition(value, currentRedactor) {
+  function extractBoundary(contentTypeValue = "") {
+    if (!contentTypeValue) return "";
+    const match = contentTypeValue.match(/boundary="?([^";]+)"?/i);
+    return match ? match[1] : "";
+  }
+
+  function redactMultipartFormData(bodyText, currentRedactor, boundary) {
+    if (!boundary) throw new Error("Missing multipart boundary.");
+    const boundaryMarker = `--${boundary}`;
+    const rawSegments = bodyText.split(boundaryMarker);
+    const processedParts = [];
+    rawSegments.forEach((segment) => {
+      if (!segment) return;
+      const trimmed = segment.trim();
+      if (!trimmed || trimmed === "--") return;
+      let workingPart = segment.replace(/^\r?\n/, "");
+      workingPart = workingPart.replace(/\r?\n$/, "");
+      if (!workingPart.trim()) return;
+      let headerSplit = workingPart.indexOf("\r\n\r\n");
+      let dividerLength = 4;
+      if (headerSplit === -1) {
+        headerSplit = workingPart.indexOf("\n\n");
+        dividerLength = 2;
+      }
+      if (headerSplit === -1) {
+        processedParts.push(workingPart.trim());
+        return;
+      }
+      const separator = workingPart.slice(headerSplit, headerSplit + dividerLength);
+      const headerSection = workingPart.slice(0, headerSplit);
+      const bodySection = workingPart.slice(headerSplit + dividerLength);
+      const headerLines = headerSection.split(/\r?\n/);
+      let cdIndex = -1;
+      let cdValue = "";
+      let partContentType = "";
+      headerLines.forEach((line, idx) => {
+        const match = line.match(/^([^:]+):\s*(.*)$/);
+        if (!match) return;
+        const key = match[1].trim();
+        const lowerKey = key.toLowerCase();
+        const value = match[2].trim();
+        if (lowerKey === "content-disposition") {
+          cdIndex = idx;
+          cdValue = value;
+        } else if (lowerKey === "content-type") {
+          partContentType = value;
+        }
+        headerLines[idx] = `${key}: ${value}`;
+      });
+      const hasFilename = /filename=/i.test(cdValue);
+      let redactedBody = bodySection;
+      if (hasFilename) {
+        redactedBody = redactMultipartFileBody(
+          bodySection,
+          currentRedactor,
+          partContentType
+        );
+        if (cdIndex !== -1) {
+          headerLines[cdIndex] = formatContentDisposition(cdValue, currentRedactor, {
+            forceFilenameRedaction: true,
+          });
+        }
+      } else {
+        const plainRedaction = redactPlainTextResult(
+          bodySection || "",
+          currentRedactor
+        );
+        redactedBody = plainRedaction.output;
+      }
+      processedParts.push(
+        `${headerLines.join("\r\n")}${separator}${redactedBody}`
+      );
+    });
+    if (!processedParts.length) return bodyText;
+    const rebuiltParts = processedParts
+      .map((part) => `${boundaryMarker}\r\n${part}`)
+      .join("\r\n");
+    return `${rebuiltParts}\r\n${boundaryMarker}--`;
+  }
+
+
+  function redactMultipartFileBody(
+    bodyText,
+    currentRedactor,
+    contentTypeValue = ""
+  ) {
+    const normalizedType = contentTypeValue
+      ? contentTypeValue.split(";")[0].trim()
+      : "";
+    if (
+      normalizedType &&
+      normalizedType.startsWith("multipart/")
+    ) {
+      return bodyText;
+    }
+    try {
+      if (normalizedType) {
+        return redactBodyContent(
+          bodyText,
+          currentRedactor,
+          normalizedType,
+          contentTypeValue
+        );
+      }
+      return redactBodyContent(bodyText, currentRedactor, "");
+    } catch (e) {
+      return bodyText
+        .split("\n")
+        .map((line) => currentRedactor.redactString(line))
+        .join("\n");
+    }
+  }
+
+  function formatContentDisposition(
+    value,
+    currentRedactor,
+    options = {}
+  ) {
     const parts = value.split(";");
     if (!parts.length) return `Content-Disposition: ${value}`;
     const normalized = parts[0].trim().toLowerCase();
-    if (normalized !== "attachment") {
+    const forceFilenameRedaction = Boolean(
+      options.forceFilenameRedaction
+    );
+    if (!forceFilenameRedaction && normalized !== "attachment") {
       return `Content-Disposition: ${value}`;
     }
     const updatedParts = parts.map((part) => part.trim());
