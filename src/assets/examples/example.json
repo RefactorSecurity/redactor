@@ -1,9 +1,9 @@
 {
-    "id": 1001,
-    "name": "Jane Doe",
-    "isActive": true,
-    "tags": [
-        "user",
-        "customer"
-    ]
+  "id": 1001,
+  "isActive": true,
+  "name": "Jane Doe",
+  "tags": [
+    "user",
+    "customer"
+  ]
 }
