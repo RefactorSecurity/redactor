@@ -228,9 +228,34 @@
           </div>
         </div>
         <div
+          id="input-editor-wrapper"
           class="relative flex-grow overflow-hidden rounded-2xl my-1 editor-frame"
         >
           <div id="input-editor" class="h-full w-full"></div>
+          <div
+            id="input-drop-overlay"
+            class="hidden pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-blue-600/10 text-blue-800 dark:text-blue-100 text-sm font-medium tracking-wide"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="mb-2"
+            >
+              <path d="M21 15a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2"></path>
+              <path
+                d="M7 10l5-5 5 5M12 5v12"
+              ></path>
+            </svg>
+            Drop file to load
+          </div>
           <div
             id="input-loading-overlay"
             class="hidden absolute inset-0 z-20 flex items-center justify-center bg-white/80 dark:bg-gray-900/70"

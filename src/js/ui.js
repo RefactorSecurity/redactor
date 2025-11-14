@@ -35,6 +35,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputLoadingOverlay = document.getElementById(
     "input-loading-overlay"
   );
+  const inputEditorWrapper = document.getElementById(
+    "input-editor-wrapper"
+  );
+  const inputDropOverlay = document.getElementById("input-drop-overlay");
   const scrollLeftButton = document.getElementById("scroll-left-button");
   const scrollRightButton = document.getElementById(
     "scroll-right-button"
@@ -233,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ? "material-darker"
         : "eclipse",
       placeholder:
-        "Paste JSON, XML, YAML, CSV, Form URL-Encoded, HTTP, or plain text data below...",
+        "Type, paste, or drag-and-drop JSON, XML, YAML, CSV, form-URL-encoded, HTTP, or plain text data to redact...",
     }
   );
   const outputEditor = createEditor(
@@ -423,6 +427,15 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  function setInputDropState(isActive) {
+    if (inputEditorWrapper) {
+      inputEditorWrapper.classList.toggle("drag-over", Boolean(isActive));
+    }
+    if (inputDropOverlay) {
+      inputDropOverlay.classList.toggle("hidden", !isActive);
+    }
+  }
+
   function loadExampleFile(fileName, label) {
     setInputEditorLoading(true);
     fetch(`src/assets/examples/${fileName}`)
@@ -444,23 +457,108 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  function handleLocalFileSelection(event) {
-    const file = event.target.files?.[0];
+  function importFileIntoInputEditor(file, { onComplete } = {}) {
     if (!file) return;
     const reader = new FileReader();
     setInputEditorLoading(true);
-    reader.onload = () => {
-      loadContentIntoEditor(reader.result || "", file.name);
-      localFileInput.value = "";
+    const finalize = () => {
+      if (typeof onComplete === "function") {
+        try {
+          onComplete();
+        } catch (error) {
+          console.error("Cleanup after file import failed:", error);
+        }
+      }
       setInputEditorLoading(false);
+    };
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      loadContentIntoEditor(result, file.name || "");
+      finalize();
     };
     reader.onerror = () => {
       console.error("File read error:", reader.error);
       showError("Failed to read the selected file.");
-      localFileInput.value = "";
-      setInputEditorLoading(false);
+      finalize();
     };
     reader.readAsText(file);
+  }
+
+  function handleLocalFileSelection(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    importFileIntoInputEditor(file, {
+      onComplete: () => {
+        if (localFileInput) localFileInput.value = "";
+      },
+    });
+  }
+
+  function setupInputDragAndDrop() {
+    if (!inputEditorWrapper) return;
+    let dragCounter = 0;
+    const containsFiles = (event) => {
+      const dt = event.dataTransfer;
+      if (!dt) return false;
+      if (dt.types) {
+        if (typeof dt.types.includes === "function") {
+          if (dt.types.includes("Files")) return true;
+        } else if (typeof dt.types.contains === "function") {
+          if (dt.types.contains("Files")) return true;
+        }
+      }
+      if (dt.items && dt.items.length) {
+        for (let i = 0; i < dt.items.length; i += 1) {
+          if (dt.items[i].kind === "file") return true;
+        }
+      }
+      return Boolean(dt.files && dt.files.length);
+    };
+
+    const resetDragState = () => {
+      dragCounter = 0;
+      setInputDropState(false);
+    };
+
+    inputEditorWrapper.addEventListener("dragenter", (event) => {
+      if (!containsFiles(event)) return;
+      event.preventDefault();
+      dragCounter += 1;
+      setInputDropState(true);
+    });
+
+    inputEditorWrapper.addEventListener("dragover", (event) => {
+      if (!containsFiles(event)) return;
+      event.preventDefault();
+      const dt = event.dataTransfer;
+      if (dt) dt.dropEffect = "copy";
+    });
+
+    inputEditorWrapper.addEventListener("dragleave", (event) => {
+      if (!containsFiles(event)) return;
+      if (
+        event.relatedTarget &&
+        inputEditorWrapper.contains(event.relatedTarget)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      dragCounter = Math.max(0, dragCounter - 1);
+      if (dragCounter === 0) {
+        setInputDropState(false);
+      }
+    });
+
+    inputEditorWrapper.addEventListener("drop", (event) => {
+      if (!containsFiles(event)) return;
+      event.preventDefault();
+      const file = event.dataTransfer?.files?.[0];
+      resetDragState();
+      closeOpenFileMenu();
+      if (file) {
+        importFileIntoInputEditor(file);
+      }
+    });
   }
 
   function loadContentIntoEditor(content, sourceLabel = "") {
@@ -1181,6 +1279,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     localFileInput.addEventListener("change", handleLocalFileSelection);
   }
+
+  setupInputDragAndDrop();
 
   clearInputButton?.addEventListener("click", () => {
     clearInputEditorContents();
