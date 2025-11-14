@@ -48,6 +48,75 @@
       );
   }
 
+  function parseCsv(text) {
+    const rows = [];
+    let current = "";
+    let row = [];
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (text[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += char;
+        }
+        continue;
+      }
+
+      if (char === '"') {
+        inQuotes = true;
+        continue;
+      }
+      if (char === ",") {
+        row.push(current);
+        current = "";
+        continue;
+      }
+      if (char === "\r" || char === "\n") {
+        if (char === "\r" && text[i + 1] === "\n") i++;
+        row.push(current);
+        rows.push(row);
+        row = [];
+        current = "";
+        continue;
+      }
+      current += char;
+    }
+
+    if (inQuotes) {
+      throw new Error("Unterminated quoted field.");
+    }
+
+    row.push(current);
+    rows.push(row);
+    return rows;
+  }
+
+  function stringifyCsv(rows) {
+    return rows
+      .map((row) => {
+        const safeRow = Array.isArray(row) ? row : [row];
+        return safeRow
+          .map((value = "") => {
+            const stringValue =
+              value === null || value === undefined ? "" : String(value);
+            if (/["\r\n,]/.test(stringValue)) {
+              return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+          })
+          .join(",");
+      })
+      .join("\n");
+  }
+
   function redactPlainTextResult(text, currentRedactor) {
     if (!currentRedactor) {
       throw new Error("Redaction engine instance required.");
@@ -222,6 +291,69 @@
     };
   }
 
+  function redactCsvContent(text, currentRedactor) {
+    const rows = parseCsv(text);
+    const hasAnyStructuredRow = rows.some(
+      (row) => Array.isArray(row) && row.length > 0
+    );
+    if (!rows.length || !hasAnyStructuredRow) {
+      throw new Error("Not a valid CSV document.");
+    }
+    const treatFirstRowAsHeader =
+      currentRedactor?.settings?.csvHasHeader !== false;
+    const headerRow = treatFirstRowAsHeader ? rows[0] : null;
+    const redactedRows = [];
+    const startIndex = treatFirstRowAsHeader ? 1 : 0;
+    if (treatFirstRowAsHeader && Array.isArray(headerRow)) {
+      redactedRows.push(headerRow.slice());
+    }
+    for (let i = startIndex; i < rows.length; i++) {
+      const row = rows[i];
+      if (!Array.isArray(row)) {
+        redactedRows.push(row);
+        continue;
+      }
+      const hasValues = row.some(
+        (cell) => cell !== undefined && String(cell ?? "").trim() !== ""
+      );
+      if (!hasValues) {
+        redactedRows.push(row.slice());
+        continue;
+      }
+      const redactedRow = row.map((cell, colIndex) => {
+        const columnName = headerRow?.[colIndex] ?? "";
+        if (currentRedactor.isProtectedField(columnName)) {
+          return cell;
+        }
+        const primitive = currentRedactor.redactPrimitive(
+          String(cell ?? "")
+        );
+        if (
+          typeof primitive === "string" &&
+          primitive.startsWith(currentRedactor.floatPlaceholderPrefix)
+        ) {
+          return primitive.slice(
+            currentRedactor.floatPlaceholderPrefix.length
+          );
+        }
+        return typeof primitive === "string"
+          ? primitive
+          : String(primitive);
+      });
+      redactedRows.push(redactedRow);
+    }
+    return stringifyCsv(redactedRows);
+  }
+
+  function redactCsvResult(text, currentRedactor, formatLabel = "CSV") {
+    const redactedOutput = redactCsvContent(text, currentRedactor);
+    return {
+      input: text,
+      output: redactedOutput,
+      format: formatLabel || "CSV",
+    };
+  }
+
   function redactBodyContent(bodyText, currentRedactor, contentType = "") {
     if (!bodyText) return "";
 
@@ -305,6 +437,9 @@
       }
       return redactedParams.toString();
     };
+    const runCsvRedaction = () => {
+      return redactCsvContent(bodyText, currentRedactor);
+    };
     const runPlainTextRedaction = () => {
       return bodyText
         .split("\n")
@@ -321,6 +456,8 @@
       "application/x-www-form-urlencoded": runFormUrlEncodedRedaction,
       "application/yaml": runYamlRedaction,
       "text/yaml": runYamlRedaction,
+      "text/csv": runCsvRedaction,
+      "application/csv": runCsvRedaction,
     };
 
     if (contentMap[mainContentType]) {
@@ -342,6 +479,9 @@
     } catch (e) {}
     try {
       return runFormUrlEncodedRedaction();
+    } catch (e) {}
+    try {
+      return runCsvRedaction();
     } catch (e) {}
 
     return runPlainTextRedaction();
@@ -539,7 +679,8 @@
   ) {
     const effectiveSettings =
       redactionSettings || currentRedactor?.settings || {};
-    switch (format) {
+    const normalizedFormat = normalizeFormatKey(format);
+    switch (normalizedFormat) {
       case "HTTP Request":
       case "HTTP Response":
         return redactHttpResult(text, currentRedactor, effectiveSettings);
@@ -549,6 +690,8 @@
         return redactXmlResult(text, currentRedactor);
       case "YAML":
         return redactYamlResult(text, currentRedactor);
+      case "CSV":
+        return redactCsvResult(text, currentRedactor, format || "CSV");
       case "Form URL-Encoded":
         return redactFormUrlEncodedResult(
           text,
@@ -558,6 +701,29 @@
       default:
         return redactPlainTextResult(text, currentRedactor);
     }
+  }
+
+  function isLikelyCsv(text) {
+    const rows = parseCsv(text);
+    const meaningfulRows = rows.filter(
+      (row) =>
+        Array.isArray(row) &&
+        row.some((cell) => String(cell ?? "").trim() !== "")
+    );
+    if (meaningfulRows.length < 2) return false;
+    const expectedColumns = meaningfulRows[0].length;
+    if (expectedColumns < 2) return false;
+    return meaningfulRows.every((row) => row.length === expectedColumns);
+  }
+
+  function getCsvFormatLabel(hasHeader) {
+    return hasHeader === false ? "CSV (no titles)" : "CSV (with titles)";
+  }
+
+  function normalizeFormatKey(format) {
+    if (typeof format !== "string") return "";
+    if (format.startsWith("CSV")) return "CSV";
+    return format;
   }
 
   function redactJsonStructure(value, currentRedactor, key = null) {
@@ -595,7 +761,7 @@
     return value;
   }
 
-  function detectFormat(text) {
+  function detectFormat(text, options = {}) {
     const trimmedText = text.trim();
     if (!trimmedText) return "";
     const normalizedText = trimmedText.replace(/^\uFEFF/, "");
@@ -653,6 +819,16 @@
       const params = new URLSearchParams(trimmedText);
       if (Array.from(params.keys()).length === 0) throw new Error();
       return "Form URL-Encoded";
+    } catch (e) {}
+
+    try {
+      if (isLikelyCsv(trimmedText)) {
+        const hasHeaderSetting =
+          options.csvHasHeader === undefined
+            ? true
+            : Boolean(options.csvHasHeader);
+        return getCsvFormatLabel(hasHeaderSetting);
+      }
     } catch (e) {}
 
     return "Plain Text";

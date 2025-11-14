@@ -100,10 +100,56 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingProtectedFields = document.getElementById(
     "setting-protected-fields"
   );
+  const settingCsvWithHeader = document.getElementById(
+    "setting-csv-with-header"
+  );
+  const settingCsvNoHeader = document.getElementById(
+    "setting-csv-no-header"
+  );
   const settingDarkTheme = document.getElementById("setting-dark-theme");
   const settingSyntaxHighlight = document.getElementById(
     "setting-syntax-highlight"
   );
+  const CSV_MODE_NAME = "csv";
+
+  function ensureCsvModeRegistered() {
+    if (
+      typeof CodeMirror === "undefined" ||
+      typeof CodeMirror.defineSimpleMode !== "function"
+    )
+      return;
+    if (CodeMirror.modes?.[CSV_MODE_NAME]) return;
+    CodeMirror.defineSimpleMode(CSV_MODE_NAME, {
+      start: [
+        {
+          regex: /"(?:[^"]|"")*"?/,
+          token: "string",
+        },
+        {
+          regex: /-?\d+(?:\.\d+)?/,
+          token: "number",
+        },
+        {
+          regex: /,/,
+          token: "punctuation",
+        },
+        {
+          regex: /\s+/,
+          token: null,
+        },
+        {
+          regex: /[^\s",][^,"]*/,
+          token: "atom",
+        },
+      ],
+      meta: {
+        lineComment: "",
+      },
+    });
+    CodeMirror.defineMIME("text/csv", CSV_MODE_NAME);
+  }
+
+  ensureCsvModeRegistered();
 
   // --- CodeMirror Editors ---
   const createEditor = (el, options) =>
@@ -120,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ? "material-darker"
         : "eclipse",
       placeholder:
-        "Paste JSON, XML, YAML, Form URL-Encoded, HTTP, or plain text data below...",
+        "Paste JSON, XML, YAML, CSV, Form URL-Encoded, HTTP, or plain text data below...",
     }
   );
   const outputEditor = createEditor(
@@ -154,15 +200,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const EXAMPLE_FILES = [
     { label: "Sample JSON", file: "example.json" },
     { label: "Sample XML", file: "example.xml" },
+    { label: "Sample CSV", file: "example.csv" },
     { label: "Sample YAML", file: "example.yaml" },
-    { label: "HTTP GET (no query)", file: "get_no_query.http" },
-    { label: "HTTP GET (with query)", file: "get_with_query.http" },
+    { label: "HTTP GET (no query string)", file: "get_no_query.http" },
+    { label: "HTTP GET (with query string)", file: "get_with_query.http" },
     { label: "HTTP GET (with cookies)", file: "get_with_cookies.http" },
     { label: "HTTP GET (with CSRF)", file: "get_with_csrf.http" },
     { label: "HTTP POST (form data)", file: "post_form.http" },
     { label: "HTTP POST (JSON)", file: "post_json.http" },
-    { label: "HTTP POST (no query)", file: "post_no_query.http" },
-    { label: "HTTP POST (with query)", file: "post_with_query.http" },
+    { label: "HTTP POST (no query string)", file: "post_no_query.http" },
+    { label: "HTTP POST (with query string)", file: "post_with_query.http" },
     { label: "HTTP POST (XML)", file: "post_xml.http" },
     { label: "HTTP Response Sample", file: "response_example.http" },
     { label: "Query Parameters Sample", file: "query.txt" },
@@ -176,6 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
       redactParamNames: false,
       redactCookies: true,
       redactCsrf: true,
+      csvHasHeader: true,
       ignoredWords: [],
       protectedFields: [],
     },
@@ -233,6 +281,10 @@ document.addEventListener("DOMContentLoaded", () => {
     settingRedactCsrf.checked = data.redactCsrf;
     settingIgnoredWords.value = data.ignoredWords.join(", ");
     settingProtectedFields.value = data.protectedFields.join(", ");
+    const csvHasHeader =
+      data.csvHasHeader === undefined ? true : Boolean(data.csvHasHeader);
+    if (settingCsvWithHeader) settingCsvWithHeader.checked = csvHasHeader;
+    if (settingCsvNoHeader) settingCsvNoHeader.checked = !csvHasHeader;
     settingDarkTheme.checked = uiPrefs.useDarkTheme;
     settingSyntaxHighlight.checked = uiPrefs.syntaxHighlight;
   }
@@ -338,7 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!activeTab) return;
     activeTab.input = content;
     activeTab.output = "";
-    const detected = detectFormat(content);
+    const detected = detectFormat(content, settings?.redaction || {});
     activeTab.format = detected;
     if (sourceLabel) {
       activeTab.name = sourceLabel;
@@ -372,21 +424,37 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getExtensionForFormat(format) {
+    const normalizedFormat =
+      typeof format === "string" && format.startsWith("CSV")
+        ? "CSV"
+        : format;
     const formatToExtension = {
       JSON: "json",
       XML: "xml",
       YAML: "yaml",
+      CSV: "csv",
       "HTTP Request": "http",
       "HTTP Response": "http",
       "Form URL-Encoded": "txt",
       "Plain Text": "txt",
     };
-    return formatToExtension[format] || "txt";
+    return formatToExtension[normalizedFormat] || "txt";
+  }
+
+  function getSettingsTabForFormat(format = "") {
+    if (!format) return null;
+    const normalized = format.toLowerCase();
+    if (normalized.startsWith("csv")) return "csv";
+    if (normalized.startsWith("http")) return "http";
+    if (normalized.includes("form url")) return "http";
+    return null;
   }
 
   function getSuggestedFilename() {
     const activeTab = tabsState.find((t) => t.id === activeTabId);
-    const format = activeTab?.format || detectFormat(inputEditor.getValue());
+    const format =
+      activeTab?.format ||
+      detectFormat(inputEditor.getValue(), settings?.redaction || {});
     const extension = getExtensionForFormat(format);
     const baseName = (activeTab?.name || "redacted")
       .trim()
@@ -464,7 +532,7 @@ document.addEventListener("DOMContentLoaded", () => {
       throw new Error("Provide input data before generating redactions.");
     }
     await ensureCommonWordsLoaded();
-    const format = detectFormat(text);
+    const format = detectFormat(text, settings?.redaction || {});
     const zip = new JSZip();
     for (let i = 0; i < count; i++) {
       const tempRedactor = new RedactionEngine(settings.redaction);
@@ -534,6 +602,23 @@ document.addEventListener("DOMContentLoaded", () => {
     setRootTheme(settings.ui.useDarkTheme);
   }
 
+  function refreshCsvFormatLabels() {
+    if (!Array.isArray(tabsState) || tabsState.length === 0) return;
+    const detectOptions = settings?.redaction || {};
+    tabsState.forEach((tab) => {
+      if (
+        !tab ||
+        typeof tab.format !== "string" ||
+        !tab.format.startsWith("CSV")
+      )
+        return;
+      const newFormat = detectFormat(tab.input || "", detectOptions);
+      if (newFormat) {
+        tab.format = newFormat;
+      }
+    });
+  }
+
   function setActiveSettingsTab(tabName = "general") {
     if (!settingsTabButtons.length || !settingsTabPanels.length) return;
     settingsTabButtons.forEach((button) => {
@@ -549,11 +634,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function openSettingsModal() {
+  function openSettingsModal(initialTab = "general") {
+    if (isSettingsModalOpen) {
+      setActiveSettingsTab(initialTab);
+      settingsModal.classList.remove("hidden");
+      return;
+    }
     settingsBeforeModal = cloneSettings(settings);
     stagedSettings = cloneSettings(settings);
     applySettingsToInputs(stagedSettings);
-    setActiveSettingsTab("general");
+    setActiveSettingsTab(initialTab);
     isSettingsModalOpen = true;
     updateUnsavedIndicator();
     settingsModal.classList.remove("hidden");
@@ -561,9 +651,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeSettingsModal(applyChanges = false) {
     if (applyChanges && stagedSettings) {
+      const csvSettingChanged =
+        settingsBeforeModal?.redaction?.csvHasHeader !==
+        stagedSettings.redaction?.csvHasHeader;
       settings = cloneSettings(stagedSettings);
       saveSettings();
       updateTheme(settings.ui.useDarkTheme);
+      if (csvSettingChanged) {
+        refreshCsvFormatLabels();
+      }
       renderContent();
     } else {
       if (settingsBeforeModal) {
@@ -652,11 +748,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const isActive = tab.id === activeTabId;
       const tabEl = document.createElement("div");
       tabEl.dataset.tabId = tab.id;
-      tabEl.className = `flex-shrink-0 flex items-center cursor-pointer border-r border-t border-gray-300 dark:border-gray-700 px-2 py-1.5 rounded-t-md mt-2 ${
-        isActive
-          ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
-      }`;
+      tabEl.className = `flex-shrink-0 flex items-center cursor-pointer border-r border-t border-gray-300 dark:border-gray-700 px-2 py-1.5 rounded-t-md mt-2 ${isActive
+        ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
+        }`;
       const dragHandle = document.createElement("span");
       dragHandle.textContent = "⋮⋮";
       dragHandle.title = "Drag tab";
@@ -690,7 +785,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (format === "JSON") return { name: "javascript", json: true };
     if (format === "XML") return "xml";
     if (format === "YAML") return "yaml";
-    if (format.startsWith("HTTP")) return "http";
+    if (format?.startsWith?.("HTTP")) return "http";
+    if (format?.startsWith?.("CSV")) return "csv";
     return "text/plain";
   }
 
@@ -781,7 +877,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const format = detectFormat(text);
+    const format = detectFormat(text, settings?.redaction || {});
 
     try {
       redactor = new RedactionEngine(settings.redaction);
@@ -844,7 +940,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  settingsButton.addEventListener("click", openSettingsModal);
+  settingsButton.addEventListener("click", () =>
+    openSettingsModal("general")
+  );
+
+  function openSettingsForCurrentFormat() {
+    const activeTab = tabsState.find((t) => t.id === activeTabId);
+    const activeFormat =
+      activeTab?.format || detectedFormatLabel.textContent || "";
+    const tabName = getSettingsTabForFormat(activeFormat);
+    if (!tabName) return;
+    openSettingsModal(tabName);
+  }
+
+  if (detectedFormatLabel) {
+    detectedFormatLabel.addEventListener("click", () => {
+      openSettingsForCurrentFormat();
+    });
+    detectedFormatLabel.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openSettingsForCurrentFormat();
+      }
+    });
+  }
   closeSettingsButton.addEventListener("click", () =>
     closeSettingsModal(false)
   );
@@ -894,9 +1013,9 @@ document.addEventListener("DOMContentLoaded", () => {
   settingIgnoredWords.addEventListener("input", (e) => {
     updateStagedSettings(
       (draft) =>
-        (draft.redaction.ignoredWords = parseCommaSeparatedList(
-          e.target.value
-        ))
+      (draft.redaction.ignoredWords = parseCommaSeparatedList(
+        e.target.value
+      ))
     );
   });
   settingProtectedFields.addEventListener("input", (e) => {
@@ -905,6 +1024,18 @@ document.addEventListener("DOMContentLoaded", () => {
         (draft.redaction.protectedFields = parseCommaSeparatedList(
           e.target.value
         ))
+    );
+  });
+  settingCsvWithHeader.addEventListener("change", (e) => {
+    if (!e.target.checked) return;
+    updateStagedSettings(
+      (draft) => (draft.redaction.csvHasHeader = true)
+    );
+  });
+  settingCsvNoHeader.addEventListener("change", (e) => {
+    if (!e.target.checked) return;
+    updateStagedSettings(
+      (draft) => (draft.redaction.csvHasHeader = false)
     );
   });
   settingDarkTheme.addEventListener("change", (e) => {
@@ -999,15 +1130,15 @@ document.addEventListener("DOMContentLoaded", () => {
     titleEl.replaceWith(input);
     input.focus();
     input.select();
-      const finishEditing = () => {
-        const newName = input.value.trim();
-        if (newName) {
-          tab.name = newName;
-          tab.isNameManual = true;
-        }
-        input.replaceWith(titleEl);
-        renderTabs();
-      };
+    const finishEditing = () => {
+      const newName = input.value.trim();
+      if (newName) {
+        tab.name = newName;
+        tab.isNameManual = true;
+      }
+      input.replaceWith(titleEl);
+      renderTabs();
+    };
     input.addEventListener("blur", finishEditing);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") input.blur();
@@ -1081,7 +1212,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Debounce syntax highlighting update
     clearTimeout(syntaxUpdateTimer);
     syntaxUpdateTimer = setTimeout(() => {
-      const format = detectFormat(text);
+      const format = detectFormat(text, settings?.redaction || {});
       const activeTab = tabsState.find((t) => t.id === activeTabId);
       if (activeTab && activeTab.format !== format) {
         activeTab.format = format;
@@ -1193,8 +1324,8 @@ document.addEventListener("DOMContentLoaded", () => {
   updateTheme(settings.ui.useDarkTheme);
   const firstTab = createNewTab();
   activeTabId = firstTab.id;
-fetchCommonWords().catch((error) =>
-  console.error("Failed to preload word list:", error)
-);
-render();
+  fetchCommonWords().catch((error) =>
+    console.error("Failed to preload word list:", error)
+  );
+  render();
 });

@@ -4,9 +4,9 @@ Redactor is a browser-based utility for safely sharing sensitive data such as AP
 
 ## Key Features
 
-- **Multi-format support** – Automatically detects JSON, XML/HTML, YAML, HTTP requests/responses, form-encoded payloads, and plain text; applies format-aware redaction rules.
+- **Multi-format support** – Automatically detects JSON, XML/HTML, YAML, CSV, HTTP requests/responses, form-encoded payloads, and plain text; applies format-aware redaction rules.
 - **Rich editor experience** – Dual CodeMirror panes with syntax highlighting, synchronized scrolling, and split-view resizing.
-- **Customizable privacy controls** – Toggle URL-path, host, query, param-name, cookie, CSRF, and header redaction; maintain ignore lists and protected fields that stay untouched across formats.
+- **Customizable privacy controls** – Toggle URL-path, host, query, param-name, cookie, CSRF, CSV header handling, and header redaction; maintain ignore lists and protected fields that stay untouched across formats.
 - **Theme & UI options** – Light/dark theme toggle, syntax-highlighting control, tabbed workspace with rename/close, scrollable tab bar, and responsive layout.
 - **Data ingress** – Load bundled samples, open local files, or paste directly. Tabs keep per-input state (raw/redacted text and detected format).
 - **Data egress** – Copy to clipboard, save a single redaction, or use **Bulk Save** to generate multiple redacted variants in one ZIP.
