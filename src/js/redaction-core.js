@@ -2,6 +2,41 @@
   const COMMON_WORDS_URL = "src/assets/dictionary/words.txt";
   let commonWordsPromise = null;
 
+  function createUnicodeRegex(pattern, flags, fallback) {
+    try {
+      return new RegExp(pattern, flags);
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  const WORD_SPLIT_REGEX = createUnicodeRegex(
+    "([^\\p{L}\\p{N}_]+)",
+    "u",
+    /(\W+)/
+  );
+  const WORD_CHARS_REGEX = createUnicodeRegex(
+    "^[\\p{L}\\p{N}_]+$",
+    "u",
+    /^\w+$/
+  );
+  const LETTER_DETECTOR_REGEX = createUnicodeRegex("\\p{L}", "u", /[A-Za-z]/i);
+
+  function isLetter(char) {
+    if (!char) return false;
+    LETTER_DETECTOR_REGEX.lastIndex = 0;
+    return LETTER_DETECTOR_REGEX.test(char);
+  }
+
+  function countLetters(value) {
+    if (!value) return 0;
+    let count = 0;
+    for (const char of value) {
+      if (isLetter(char)) count++;
+    }
+    return count;
+  }
+
   function fetchCommonWords() {
     if (!commonWordsPromise) {
       commonWordsPromise = fetch(COMMON_WORDS_URL)
@@ -1187,19 +1222,17 @@
     }
 
     redactString(original) {
-      const parts = original.split(/(\W+)/);
+      const parts = original.split(WORD_SPLIT_REGEX);
       return parts
         .map((part) => {
           if (this.ignoredWordsSet.has(part.toLowerCase())) {
             return part;
           }
-          if (!/^\w+$/.test(part)) return part;
+          if (!WORD_CHARS_REGEX.test(part)) return part;
 
-          const pureLetters = part.replace(/[^A-Za-z]/g, "");
+          const letterCount = countLetters(part);
           const wordList =
-            pureLetters.length > 0
-              ? this.wordMap[pureLetters.length] || []
-              : [];
+            letterCount > 0 ? this.wordMap[letterCount] || [] : [];
           if (wordList.length) {
             const newWord =
               wordList[Math.floor(Math.random() * wordList.length)];
@@ -1236,13 +1269,21 @@
         digits = "0123456789";
       let redacted = "";
       for (const char of original) {
-        if (upper.includes(char))
-          redacted += upper[Math.floor(Math.random() * upper.length)];
-        else if (lower.includes(char))
-          redacted += lower[Math.floor(Math.random() * lower.length)];
-        else if (digits.includes(char))
+        if (digits.includes(char)) {
           redacted += digits[Math.floor(Math.random() * digits.length)];
-        else redacted += char;
+          continue;
+        }
+        if (isLetter(char)) {
+          const lowerChar = char.toLowerCase();
+          const upperChar = char.toUpperCase();
+          const hasDistinctCase = lowerChar !== upperChar;
+          const useUpperCase =
+            hasDistinctCase && char === upperChar && char !== lowerChar;
+          const pool = useUpperCase ? upper : lower;
+          redacted += pool[Math.floor(Math.random() * pool.length)];
+        } else {
+          redacted += char;
+        }
       }
       return redacted;
     }
