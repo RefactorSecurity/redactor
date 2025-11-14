@@ -193,6 +193,12 @@
     const parser = new DOMParser();
     let workingText = text;
     let preservedDocType = "";
+    let preservedDeclaration = "";
+    const declMatch = workingText.match(/^\s*(<\?xml[^>]*\?>\s*)/i);
+    if (declMatch) {
+      preservedDeclaration = declMatch[1];
+      workingText = workingText.slice(declMatch[0].length);
+    }
     if (/^\s*<!DOCTYPE[\s\S]+?>/i.test(workingText)) {
       const docTypeMatch = workingText.match(/^\s*<!DOCTYPE[\s\S]+?>\s*/i);
       if (docTypeMatch) {
@@ -232,8 +238,8 @@
       ""
     );
     return {
-      input: preservedDocType + formattedInput,
-      output: preservedDocType + formattedOutput,
+      input: preservedDeclaration + preservedDocType + formattedInput,
+      output: preservedDeclaration + preservedDocType + formattedOutput,
       format: "XML",
     };
   }
