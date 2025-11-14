@@ -1196,13 +1196,13 @@
           if (!/^\w+$/.test(part)) return part;
 
           const pureLetters = part.replace(/[^A-Za-z]/g, "");
-          if (pureLetters.length >= 3 && this.wordMap[pureLetters.length]) {
+          const wordList =
+            pureLetters.length > 0
+              ? this.wordMap[pureLetters.length] || []
+              : [];
+          if (wordList.length) {
             const newWord =
-              this.wordMap[pureLetters.length][
-                Math.floor(
-                  Math.random() * this.wordMap[pureLetters.length].length
-                )
-              ];
+              wordList[Math.floor(Math.random() * wordList.length)];
             return this.preserveCase(part, newWord);
           } else {
             return this.generateRandomString(part);
