@@ -225,9 +225,19 @@
           </div>
         </div>
         <div
-          id="input-editor"
-          class="flex-grow overflow-hidden rounded-2xl my-1 editor-frame"
-        ></div>
+          class="relative flex-grow overflow-hidden rounded-2xl my-1 editor-frame"
+        >
+          <div id="input-editor" class="h-full w-full"></div>
+          <div
+            id="input-loading-overlay"
+            class="hidden absolute inset-0 z-20 flex items-center justify-center bg-white/80 dark:bg-gray-900/70"
+            aria-live="polite"
+            aria-busy="false"
+          >
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <span class="sr-only">Loading sample data…</span>
+          </div>
+        </div>
       </div>
 
       <div

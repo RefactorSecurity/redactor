@@ -32,6 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorMessageEl = document.getElementById("error-message");
   const detectedFormatLabel = document.getElementById("detected-format");
   const tabsContainer = document.getElementById("tabs-container");
+  const inputLoadingOverlay = document.getElementById(
+    "input-loading-overlay"
+  );
   const scrollLeftButton = document.getElementById("scroll-left-button");
   const scrollRightButton = document.getElementById(
     "scroll-right-button"
@@ -281,7 +284,17 @@ document.addEventListener("DOMContentLoaded", () => {
     openFileMenu.classList.add("hidden");
   }
 
+  function setInputEditorLoading(isLoading) {
+    if (!inputLoadingOverlay) return;
+    inputLoadingOverlay.classList.toggle("hidden", !isLoading);
+    inputLoadingOverlay.setAttribute(
+      "aria-busy",
+      isLoading ? "true" : "false"
+    );
+  }
+
   function loadExampleFile(fileName, label) {
+    setInputEditorLoading(true);
     fetch(`src/assets/examples/${fileName}`)
       .then((response) => {
         if (!response.ok) {
@@ -295,6 +308,9 @@ document.addEventListener("DOMContentLoaded", () => {
       .catch((error) => {
         console.error("Example load failed:", error);
         showError("Could not load the selected example file.");
+      })
+      .finally(() => {
+        setInputEditorLoading(false);
       });
   }
 
@@ -302,14 +318,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
+    setInputEditorLoading(true);
     reader.onload = () => {
       loadContentIntoEditor(reader.result || "", file.name);
       localFileInput.value = "";
+      setInputEditorLoading(false);
     };
     reader.onerror = () => {
       console.error("File read error:", reader.error);
       showError("Failed to read the selected file.");
       localFileInput.value = "";
+      setInputEditorLoading(false);
     };
     reader.readAsText(file);
   }

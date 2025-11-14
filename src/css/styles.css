@@ -175,3 +175,22 @@ input[type="checkbox"]:checked::before {
 .settings-panel.active {
   display: block;
 }
+
+#input-loading-overlay {
+  transition: opacity 0.15s ease;
+}
+
+.loading-spinner {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 4px solid rgba(59, 130, 246, 0.25);
+  border-top-color: #3b82f6;
+  animation: input-spinner-rotate 0.9s linear infinite;
+}
+
+@keyframes input-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
