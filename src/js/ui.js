@@ -275,7 +275,8 @@ document.addEventListener("DOMContentLoaded", () => {
     { label: "HTTP POST (no query string)", file: "post_no_query.http" },
     { label: "HTTP POST (with query string)", file: "post_with_query.http" },
     { label: "HTTP POST (XML)", file: "post_xml.http" },
-    { label: "HTTP Response Sample", file: "response_example.http" },
+    { label: "HTTP Response (JSON)", file: "response_json.http" },
+    { label: "HTTP Response (CSV)", file: "response_csv.http" },
     { label: "Query Parameters Sample", file: "query.txt" },
   ];
 
@@ -1086,9 +1087,9 @@ document.addEventListener("DOMContentLoaded", () => {
   settingProtectedFields.addEventListener("input", (e) => {
     updateStagedSettings(
       (draft) =>
-        (draft.redaction.protectedFields = parseCommaSeparatedList(
-          e.target.value
-        ))
+      (draft.redaction.protectedFields = parseCommaSeparatedList(
+        e.target.value
+      ))
     );
   });
   settingCsvWithHeader.addEventListener("change", (e) => {

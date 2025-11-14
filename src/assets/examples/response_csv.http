@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="users.csv"
+Date: Fri, 14 Nov 2025 10:30:45 GMT
+Content-Length: 120
+
+Name,Email,Age,JoinedDate
+Alice Johnson,alice@example.com,28,2023-01-15
+Bob Smith,bob@example.com,34,2022-08-22
+Carol Lee,carol@example.com,29,2024-03-10

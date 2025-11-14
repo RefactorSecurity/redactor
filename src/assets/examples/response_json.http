@@ -6,6 +6,6 @@ Connection: keep-alive
 Location: /api/users/124
 
 {
-  "status": "created",
-  "id": 124
+  "id": 124,
+  "status": "created"
 }
