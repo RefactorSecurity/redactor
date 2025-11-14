@@ -152,6 +152,139 @@
       .join("\n");
   }
 
+  function createJsonNumberContext(text = "") {
+    const literals = extractJsonNumberLiterals(text);
+    let index = 0;
+    return {
+      nextNumberLiteral() {
+        if (index >= literals.length) return null;
+        return literals[index++];
+      },
+    };
+  }
+
+  function extractJsonNumberLiterals(text = "") {
+    const literals = [];
+    let i = 0;
+    let inString = false;
+    let escaping = false;
+    while (i < text.length) {
+      const char = text[i];
+      if (inString) {
+        if (escaping) {
+          escaping = false;
+        } else if (char === "\\") {
+          escaping = true;
+        } else if (char === '"') {
+          inString = false;
+        }
+        i++;
+        continue;
+      }
+      if (char === '"') {
+        inString = true;
+        i++;
+        continue;
+      }
+      if (char === "-" || isDigit(char)) {
+        const literalInfo = readJsonNumberLiteral(text, i);
+        if (literalInfo) {
+          literals.push(literalInfo.literal);
+          i = literalInfo.end;
+          continue;
+        }
+      }
+      i++;
+    }
+    return literals;
+  }
+
+  function readJsonNumberLiteral(text, startIndex) {
+    const length = text.length;
+    let i = startIndex;
+    if (text[i] === "-") {
+      i++;
+    }
+    if (i >= length || !isDigit(text[i])) return null;
+    if (text[i] === "0") {
+      i++;
+    } else {
+      while (i < length && isDigit(text[i])) i++;
+    }
+    if (text[i] === ".") {
+      i++;
+      if (i >= length || !isDigit(text[i])) return null;
+      while (i < length && isDigit(text[i])) i++;
+    }
+    if (text[i] === "e" || text[i] === "E") {
+      i++;
+      if (text[i] === "+" || text[i] === "-") {
+        i++;
+      }
+      if (i >= length || !isDigit(text[i])) return null;
+      while (i < length && isDigit(text[i])) i++;
+    }
+    return { literal: text.slice(startIndex, i), end: i };
+  }
+
+  function isDigit(char) {
+    return char >= "0" && char <= "9";
+  }
+
+  function parseNumberComponents(numStr) {
+    const trimmed = String(numStr).trim();
+    const match = trimmed.match(
+      /^(-?)(0|[1-9]\d*)(?:\.(\d+))?(?:([eE])([+-]?)(\d+))?$/
+    );
+    if (!match) return null;
+    return {
+      original: trimmed,
+      sign: match[1] || "",
+      intPart: match[2] || "0",
+      fraction: match[3] || "",
+      exponentChar: match[4] || "",
+      exponentSign: match[5] || "",
+      exponentDigits: match[6] || "",
+    };
+  }
+
+  function randomizeDigitSequence(length, options = {}) {
+    if (!length) return "";
+    const { disallowLeadingZero = false } = options;
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      const pool =
+        i === 0 && disallowLeadingZero ? "123456789" : "0123456789";
+      result += pool[Math.floor(Math.random() * pool.length)];
+    }
+    return result;
+  }
+
+  function buildRandomizedNumberLiteral(components) {
+    const hasNonZeroLeading =
+      components.intPart.length > 1 && components.intPart[0] !== "0";
+    const randomizedInt = randomizeDigitSequence(
+      components.intPart.length,
+      {
+        disallowLeadingZero: hasNonZeroLeading,
+      }
+    );
+    const randomizedFraction = randomizeDigitSequence(
+      components.fraction.length
+    );
+    const randomizedExponent = randomizeDigitSequence(
+      components.exponentDigits.length
+    );
+    let literal = `${components.sign}${randomizedInt || "0"}`;
+    if (components.fraction.length) {
+      literal += `.${randomizedFraction}`;
+    }
+    if (components.exponentChar) {
+      literal += `${components.exponentChar}${components.exponentSign}${randomizedExponent}`;
+    }
+    return literal;
+  }
+
   function redactPlainTextResult(text, currentRedactor) {
     if (!currentRedactor) {
       throw new Error("Redaction engine instance required.");
@@ -170,17 +303,22 @@
   ) {
     const data = JSON.parse(text);
     const shouldSort = Boolean(jsonSettings.sortKeysAlphabetically);
-    const workingData = shouldSort ? sortObjectKeys(data) : data;
-    const formattedInput = JSON.stringify(workingData, null, 2);
-    const redacted = redactJsonStructure(workingData, currentRedactor);
-    const redactedString = JSON.stringify(redacted, null, 2);
-    const finalString = redactedString.replace(
-      new RegExp(
-        `"${currentRedactor.floatPlaceholderPrefix}([-.0-9]+)"`,
-        "g"
-      ),
-      (m, n) => n
+    const numberContext = createJsonNumberContext(text);
+    const formattedInput = JSON.stringify(
+      shouldSort ? sortObjectKeys(data) : data,
+      null,
+      2
     );
+    const redactedBase = redactJsonStructure(
+      data,
+      currentRedactor,
+      null,
+      numberContext
+    );
+    const redactedForOutput = shouldSort
+      ? sortObjectKeys(redactedBase)
+      : redactedBase;
+    const finalString = JSON.stringify(redactedForOutput, null, 2);
     return { input: formattedInput, output: finalString, format: "JSON" };
   }
 
@@ -279,10 +417,7 @@
 
     const formattedInput = formatXmlDocument(xmlDoc.cloneNode(true));
     traverseAndRedact(xmlDoc.documentElement);
-    const formattedOutput = formatXmlDocument(xmlDoc).replace(
-      new RegExp(currentRedactor.floatPlaceholderPrefix, "g"),
-      ""
-    );
+    const formattedOutput = formatXmlDocument(xmlDoc);
     return {
       input: preservedDeclaration + preservedDocType + formattedInput,
       output: preservedDeclaration + preservedDocType + formattedOutput,
@@ -325,13 +460,7 @@
         redactedValue = currentRedactor.redactString(value);
       } else {
         const primitive = currentRedactor.redactPrimitive(value);
-        redactedValue =
-          typeof primitive === "string" &&
-          primitive.startsWith(currentRedactor.floatPlaceholderPrefix)
-            ? primitive.substring(
-                currentRedactor.floatPlaceholderPrefix.length
-              )
-            : String(primitive);
+        redactedValue = String(primitive);
       }
       redactedParams.append(redactedKey, redactedValue);
     }
@@ -380,14 +509,6 @@
         const primitive = currentRedactor.redactPrimitive(
           String(cell ?? "")
         );
-        if (
-          typeof primitive === "string" &&
-          primitive.startsWith(currentRedactor.floatPlaceholderPrefix)
-        ) {
-          return primitive.slice(
-            currentRedactor.floatPlaceholderPrefix.length
-          );
-        }
         return typeof primitive === "string"
           ? primitive
           : String(primitive);
@@ -417,16 +538,11 @@
     const runJsonRedaction = () => {
       const redacted = redactJsonStructure(
         JSON.parse(bodyText),
-        currentRedactor
+        currentRedactor,
+        null,
+        createJsonNumberContext(bodyText)
       );
-      const redactedString = JSON.stringify(redacted, null, 2);
-      return redactedString.replace(
-        new RegExp(
-          `"${currentRedactor.floatPlaceholderPrefix}([-.0-9]+)"`,
-          "g"
-        ),
-        (m, n) => n
-      );
+      return JSON.stringify(redacted, null, 2);
     };
     const runYamlRedaction = () => {
       const redacted = redactJsonStructure(
@@ -457,11 +573,7 @@
         node.childNodes.forEach(traverse);
       }
       traverse(xmlDoc.documentElement);
-      const serializedXml = new XMLSerializer().serializeToString(xmlDoc);
-      return serializedXml.replace(
-        new RegExp(currentRedactor.floatPlaceholderPrefix, "g"),
-        ""
-      );
+      return new XMLSerializer().serializeToString(xmlDoc);
     };
     const runFormUrlEncodedRedaction = () => {
       if (!bodyText.includes("=")) throw new Error();
@@ -484,11 +596,7 @@
           redactedValue = currentRedactor.redactString(value);
         } else {
           const p = currentRedactor.redactPrimitive(value);
-          redactedValue =
-            typeof p === "string" &&
-            p.startsWith(currentRedactor.floatPlaceholderPrefix)
-              ? p.substring(currentRedactor.floatPlaceholderPrefix.length)
-              : String(p);
+          redactedValue = String(p);
         }
         redactedParams.append(redactedKey, redactedValue);
       }
@@ -626,11 +734,8 @@
             redactedParams.append(
               redactedKey,
               typeof redactedValue === "string"
-                ? redactedValue.replace(
-                    currentRedactor.floatPlaceholderPrefix,
-                    ""
-                  )
-                : redactedValue
+                ? redactedValue
+                : String(redactedValue)
             );
           }
           redactedQuery = "?" + redactedParams.toString();
@@ -965,7 +1070,12 @@
     return format;
   }
 
-  function redactJsonStructure(value, currentRedactor, key = null) {
+  function redactJsonStructure(
+    value,
+    currentRedactor,
+    key = null,
+    context = null
+  ) {
     if (value === null) return null;
     if (
       typeof key === "string" &&
@@ -980,20 +1090,27 @@
       }
     }
     if (typeof value === "boolean") return Math.random() < 0.5;
-    if (typeof value === "number")
-      return currentRedactor.redactNumber(String(value));
+    if (typeof value === "number") {
+      const literal =
+        typeof context?.nextNumberLiteral === "function"
+          ? context.nextNumberLiteral()
+          : null;
+      const source =
+        (!Number.isFinite(value) && literal) || String(value);
+      return currentRedactor.redactNumber(source);
+    }
     if (typeof value === "string") {
       return currentRedactor.redactPrimitive(value);
     }
     if (Array.isArray(value))
       return value.map((item) =>
-        redactJsonStructure(item, currentRedactor)
+        redactJsonStructure(item, currentRedactor, null, context)
       );
     if (typeof value === "object")
       return Object.entries(value).reduce(
         (acc, [k, v]) => ({
           ...acc,
-          [k]: redactJsonStructure(v, currentRedactor, k),
+          [k]: redactJsonStructure(v, currentRedactor, k, context),
         }),
         {}
       );
@@ -1076,7 +1193,6 @@
   class RedactionEngine {
     constructor(settings = {}) {
       this.settings = { ...settings };
-      this.floatPlaceholderPrefix = "__REDACTED_FLOAT_PLACEHOLDER__:";
       this.wordMap = this.constructor.buildWordMap();
       this.ignoredWordsSet = new Set(
         (this.settings.ignoredWords || []).map((w) => w.toLowerCase())
@@ -1197,28 +1313,19 @@
     }
 
     redactNumber(numStr) {
-      const isFloat = String(numStr).includes(".");
-      let redactedStr = "";
-      const digits = "0123456789";
-      for (const char of String(numStr)) {
-        if (digits.includes(char)) {
-          redactedStr +=
-            digits[Math.floor(Math.random() * digits.length)];
-        } else {
-          redactedStr += char;
-        }
+      const components = parseNumberComponents(numStr);
+      if (!components) {
+        return this.redactString(String(numStr));
       }
-      if (isFloat) {
-        const originalDecimalPlaces = (String(numStr).split(".")[1] || "")
-          .length;
-        let [intPart, decPart = ""] = redactedStr.split(".");
-        while (decPart.length < originalDecimalPlaces) decPart += "0";
-        redactedStr =
-          intPart + "." + decPart.slice(0, originalDecimalPlaces);
-        return this.floatPlaceholderPrefix + redactedStr;
-      } else {
-        return parseInt(redactedStr, 10);
+      const literal = buildRandomizedNumberLiteral(components);
+      const parsed = Number(literal);
+      const isFloatLike =
+        components.fraction.length > 0 || Boolean(components.exponentChar);
+      if (Number.isFinite(parsed)) {
+        if (isFloatLike) return parsed;
+        if (Number.isSafeInteger(parsed)) return parsed;
       }
+      return literal;
     }
 
     redactString(original) {
