@@ -128,11 +128,16 @@
     return { input: text, output: redactedText, format: "Plain Text" };
   }
 
-  function redactJsonResult(text, currentRedactor) {
+  function redactJsonResult(
+    text,
+    currentRedactor,
+    jsonSettings = {}
+  ) {
     const data = JSON.parse(text);
-    const sorted = sortObjectKeys(data);
-    const formattedInput = JSON.stringify(sorted, null, 2);
-    const redacted = redactJsonStructure(sorted, currentRedactor);
+    const shouldSort = Boolean(jsonSettings.sortKeysAlphabetically);
+    const workingData = shouldSort ? sortObjectKeys(data) : data;
+    const formattedInput = JSON.stringify(workingData, null, 2);
+    const redacted = redactJsonStructure(workingData, currentRedactor);
     const redactedString = JSON.stringify(redacted, null, 2);
     const finalString = redactedString.replace(
       new RegExp(
@@ -512,7 +517,8 @@
   function redactHttpResult(
     text,
     currentRedactor,
-    redactionSettings = currentRedactor?.settings || {}
+    redactionSettings = currentRedactor?.settings || {},
+    jsonSettings = {}
   ) {
     const lines = text.split(/\r?\n/);
     const firstLine = lines[0].trim();
@@ -547,8 +553,10 @@
     ) {
       try {
         const bodyJson = JSON.parse(body);
-        const sorted = sortObjectKeys(bodyJson);
-        const prettifiedBody = JSON.stringify(sorted, null, 2);
+        const processedJson = jsonSettings.sortKeysAlphabetically
+          ? sortObjectKeys(bodyJson)
+          : bodyJson;
+        const prettifiedBody = JSON.stringify(processedJson, null, 2);
         if (body !== prettifiedBody) {
           formattedInput = headerBlock + "\n\n" + prettifiedBody;
         }
@@ -854,17 +862,28 @@
     text,
     trimmedText,
     currentRedactor,
-    redactionSettings
+    redactionSettings,
+    preferenceSettings = {}
   ) {
     const effectiveSettings =
       redactionSettings || currentRedactor?.settings || {};
+    const jsonSettings = preferenceSettings.json || {};
     const normalizedFormat = normalizeFormatKey(format);
     switch (normalizedFormat) {
       case "HTTP Request":
       case "HTTP Response":
-        return redactHttpResult(text, currentRedactor, effectiveSettings);
+        return redactHttpResult(
+          text,
+          currentRedactor,
+          effectiveSettings,
+          jsonSettings
+        );
       case "JSON":
-        return redactJsonResult(trimmedText, currentRedactor);
+        return redactJsonResult(
+          trimmedText,
+          currentRedactor,
+          jsonSettings
+        );
       case "XML":
         return redactXmlResult(text, currentRedactor);
       case "YAML":

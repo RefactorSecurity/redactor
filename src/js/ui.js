@@ -100,6 +100,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingProtectedFields = document.getElementById(
     "setting-protected-fields"
   );
+  const settingJsonSortKeys = document.getElementById(
+    "setting-json-sort-keys"
+  );
   const settingCsvWithHeader = document.getElementById(
     "setting-csv-with-header"
   );
@@ -293,6 +296,9 @@ document.addEventListener("DOMContentLoaded", () => {
       ignoredWords: [],
       protectedFields: [],
     },
+    json: {
+      sortKeysAlphabetically: false,
+    },
     ui: {
       useDarkTheme: window.matchMedia("(prefers-color-scheme: dark)")
         .matches,
@@ -338,6 +344,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function applySettingsToInputs(sourceSettings) {
     if (!sourceSettings) return;
     const data = sourceSettings.redaction;
+    const jsonPrefs =
+      sourceSettings.json || defaultSettings.json;
     const uiPrefs = sourceSettings.ui;
     settingRedactUrlPath.checked = data.redactUrlPath;
     settingRedactHost.checked = data.redactHost;
@@ -347,6 +355,10 @@ document.addEventListener("DOMContentLoaded", () => {
     settingRedactCsrf.checked = data.redactCsrf;
     settingIgnoredWords.value = data.ignoredWords.join(", ");
     settingProtectedFields.value = data.protectedFields.join(", ");
+    if (settingJsonSortKeys)
+      settingJsonSortKeys.checked = Boolean(
+        jsonPrefs.sortKeysAlphabetically
+      );
     const csvHasHeader =
       data.csvHasHeader === undefined ? true : Boolean(data.csvHasHeader);
     if (settingCsvWithHeader) settingCsvWithHeader.checked = csvHasHeader;
@@ -510,6 +522,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function getSettingsTabForFormat(format = "") {
     if (!format) return null;
     const normalized = format.toLowerCase();
+    if (normalized === "json") return "json";
     if (normalized.startsWith("csv")) return "csv";
     if (normalized.startsWith("http")) return "http";
     if (normalized.includes("form url")) return "http";
@@ -607,7 +620,8 @@ document.addEventListener("DOMContentLoaded", () => {
         text,
         trimmedText,
         tempRedactor,
-        settings.redaction
+        settings.redaction,
+        settings
       );
       const filename = getBulkFilename(result.format || format, i + 1);
       zip.file(filename, result.output || "");
@@ -654,6 +668,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadSettings() {
     const saved = JSON.parse(localStorage.getItem("redactorSettings"));
     const savedRedaction = saved?.redaction || {};
+    const savedJson = saved?.json || {};
     if (!Array.isArray(savedRedaction.ignoredWords)) {
       savedRedaction.ignoredWords = [];
     }
@@ -662,6 +677,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     settings = {
       redaction: { ...defaultSettings.redaction, ...savedRedaction },
+      json: { ...defaultSettings.json, ...savedJson },
       ui: { ...defaultSettings.ui, ...saved?.ui },
     };
     applySettingsToInputs(settings);
@@ -953,7 +969,8 @@ document.addEventListener("DOMContentLoaded", () => {
         text,
         trimmedText,
         redactor,
-        settings.redaction
+        settings.redaction,
+        settings
       );
       updateActiveTabData(result);
     } catch (e) {
@@ -1088,10 +1105,17 @@ document.addEventListener("DOMContentLoaded", () => {
   settingProtectedFields.addEventListener("input", (e) => {
     updateStagedSettings(
       (draft) =>
-      (draft.redaction.protectedFields = parseCommaSeparatedList(
-        e.target.value
-      ))
+        (draft.redaction.protectedFields = parseCommaSeparatedList(
+          e.target.value
+        ))
     );
+  });
+  settingJsonSortKeys?.addEventListener("change", (e) => {
+    const { checked } = e.target;
+    updateStagedSettings((draft) => {
+      if (!draft.json) draft.json = { ...defaultSettings.json };
+      draft.json.sortKeysAlphabetically = checked;
+    });
   });
   settingCsvWithHeader.addEventListener("change", (e) => {
     if (!e.target.checked) return;

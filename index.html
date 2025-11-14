@@ -448,6 +448,13 @@
             <button
               type="button"
               class="settings-tab-button"
+              data-settings-tab="json"
+            >
+              JSON
+            </button>
+            <button
+              type="button"
+              class="settings-tab-button"
               data-settings-tab="csv"
             >
               CSV
@@ -505,6 +512,32 @@
                     Schema keys that always stay verbatim in JSON/YAML/XML outputs.
                   </p>
                 </div>
+            </div>
+          </div>
+
+          <div
+            data-settings-panel="json"
+            class="settings-panel space-y-6 flex-1 overflow-auto pr-2"
+          >
+            <div class="space-y-3 pl-2">
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Control how JSON payloads are presented before redaction.
+              </p>
+              <label class="flex items-start cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="setting-json-sort-keys"
+                  class="mt-1 bg-gray-300 dark:bg-gray-600"
+                />
+                <span class="ml-3">
+                  <span class="block text-sm font-medium"
+                    >Sort keys alphabetically</span
+                  >
+                  <span class="block text-xs text-gray-500 dark:text-gray-400">
+                    When enabled, JSON objects are re-ordered A→Z prior to display. Leave unchecked to preserve the original key order.
+                  </span>
+                </span>
+              </label>
             </div>
           </div>
 
