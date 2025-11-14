@@ -152,6 +152,44 @@
       .join("\n");
   }
 
+  function normalizeFieldKey(value) {
+    if (typeof value !== "string") return "";
+    return value.trim().toLowerCase();
+  }
+
+  function slugifyFieldKey(value) {
+    if (!value) return "";
+    return value.replace(/[^a-z0-9]+/g, "");
+  }
+
+  function buildProtectedFieldsSet(fields = []) {
+    const set = new Set();
+    fields.forEach((field) => {
+      const normalized = normalizeFieldKey(field);
+      if (!normalized) return;
+      set.add(normalized);
+      const slug = slugifyFieldKey(normalized);
+      if (slug && slug !== normalized) {
+        set.add(slug);
+      }
+    });
+    return set;
+  }
+
+  function getCsvColumnAlias(index) {
+    return `column${index + 1}`;
+  }
+
+  function isProtectedCsvColumn(columnName, columnIndex, redactor) {
+    if (!redactor?.isProtectedField) return false;
+    if (typeof columnName === "string" && columnName.trim()) {
+      if (redactor.isProtectedField(columnName)) {
+        return true;
+      }
+    }
+    return redactor.isProtectedField(getCsvColumnAlias(columnIndex));
+  }
+
   function createJsonNumberContext(text = "") {
     const literals = extractJsonNumberLiterals(text);
     let index = 0;
@@ -503,7 +541,7 @@
       }
       const redactedRow = row.map((cell, colIndex) => {
         const columnName = headerRow?.[colIndex] ?? "";
-        if (currentRedactor.isProtectedField(columnName)) {
+        if (isProtectedCsvColumn(columnName, colIndex, currentRedactor)) {
           return cell;
         }
         const primitive = currentRedactor.redactPrimitive(
@@ -1197,10 +1235,8 @@
       this.ignoredWordsSet = new Set(
         (this.settings.ignoredWords || []).map((w) => w.toLowerCase())
       );
-      this.protectedFieldsSet = new Set(
-        (this.settings.protectedFields || []).map((field) =>
-          field.toLowerCase()
-        )
+      this.protectedFieldsSet = buildProtectedFieldsSet(
+        this.settings.protectedFields || []
       );
     }
 
@@ -1397,9 +1433,12 @@
 
     isProtectedField(fieldName) {
       if (typeof fieldName !== "string") return false;
-      const normalized = fieldName.trim().toLowerCase();
+      const normalized = normalizeFieldKey(fieldName);
       if (!normalized) return false;
-      return this.protectedFieldsSet.has(normalized);
+      if (this.protectedFieldsSet.has(normalized)) return true;
+      const slug = slugifyFieldKey(normalized);
+      if (slug && this.protectedFieldsSet.has(slug)) return true;
+      return false;
     }
 
     static commonWords = [];

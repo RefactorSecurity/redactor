@@ -256,9 +256,7 @@
               class="mb-2"
             >
               <path d="M21 15a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2"></path>
-              <path
-                d="M7 10l5-5 5 5M12 5v12"
-              ></path>
+              <path d="M7 10l5-5 5 5M12 5v12"></path>
             </svg>
             Drop file to load
           </div>
@@ -652,8 +650,9 @@
                   placeholder="e.g. request_id, email, correlationId"
                 ></textarea>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Schema keys that always stay verbatim in JSON/YAML/XML
-                  outputs.
+                  Schema keys in JSON/YAML/XML that stay verbatim. For CSV, use
+                  column names from the header, or <code>column1</code>,
+                  <code>column2</code>, etc. for headerless CSVs.
                 </p>
               </div>
             </div>
