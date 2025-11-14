@@ -149,10 +149,16 @@
     return { input: formattedInput, output: finalString, format: "JSON" };
   }
 
+  const YAML_DUMP_OPTIONS = {
+    noArrayIndent: true,
+    quotingType: '"',
+    forceQuotes: true,
+  };
+
   function redactYamlResult(text, currentRedactor) {
     const data = jsyaml.load(text);
     const redacted = redactJsonStructure(data, currentRedactor);
-    const redactedYaml = jsyaml.dump(redacted, { noArrayIndent: true });
+    const redactedYaml = jsyaml.dump(redacted, YAML_DUMP_OPTIONS);
     return { input: text, output: redactedYaml, format: "YAML" };
   }
 
@@ -392,7 +398,7 @@
         jsyaml.load(bodyText),
         currentRedactor
       );
-      return jsyaml.dump(redacted, { noArrayIndent: true });
+      return jsyaml.dump(redacted, YAML_DUMP_OPTIONS);
     };
     const runXmlRedaction = () => {
       const parser = new DOMParser();
