@@ -889,38 +889,71 @@
     }
 
     generateRandomDate(originalDate) {
-      const randomYear = Math.floor(Math.random() * 60) + 1980;
-      const randomMonth = Math.floor(Math.random() * 12);
-      const daysInMonth = new Date(
-        randomYear,
-        randomMonth + 1,
-        0
-      ).getDate();
-      const randomDay = Math.floor(Math.random() * daysInMonth) + 1;
-      const date = new Date(Date.UTC(randomYear, randomMonth, randomDay));
-
+      const now = Date.now();
+      const parsed = Date.parse(originalDate);
+      const isValidDate = !isNaN(parsed);
       const pad = (n) => String(n).padStart(2, "0");
 
-      if (originalDate.includes("T")) {
-        const randomHour = Math.floor(Math.random() * 24);
-        const randomMinute = Math.floor(Math.random() * 60);
-        const randomSecond = Math.floor(Math.random() * 60);
-        date.setUTCHours(randomHour, randomMinute, randomSecond);
-        let isoString = date.toISOString();
-        if (!originalDate.endsWith("Z")) {
+      let targetDate = new Date();
+      let includeTime = originalDate.includes("T");
+      let tzSuffix = originalDate.endsWith("Z") ? "Z" : "";
+
+      if (isValidDate) {
+        const diffMs = parsed - now;
+        const absDiff = Math.abs(diffMs);
+        const preserveSign = (value) =>
+          diffMs >= 0
+            ? Math.max(value, 5 * 1000)
+            : Math.min(value, -5 * 1000);
+        let newDiff = diffMs;
+        if (absDiff < 60 * 1000) {
+          const jitter =
+            (Math.random() - 0.5) * 60 * 60 * 1000; // +/-30 min
+          newDiff = preserveSign(diffMs + jitter);
+        } else if (absDiff < 60 * 60 * 1000) {
+          const ratio = 0.5 + Math.random() * 0.8; // 0.5 - 1.3
+          newDiff = preserveSign(diffMs * ratio);
+        } else if (absDiff < 24 * 60 * 60 * 1000) {
+          const ratio = 0.6 + Math.random() * 0.6; // 0.6 - 1.2
+          newDiff = preserveSign(diffMs * ratio);
+        } else if (absDiff < 365 * 24 * 60 * 60 * 1000) {
+          const ratio = 0.7 + Math.random() * 0.8; // 0.7 - 1.5
+          newDiff = preserveSign(diffMs * ratio);
+        } else {
+          const ratio = 0.8 + Math.random() * 1.0; // 0.8 - 1.8
+          newDiff = preserveSign(diffMs * ratio);
+        }
+        targetDate = new Date(now + newDiff);
+      } else {
+        const randomYear = Math.floor(Math.random() * 60) + 1980;
+        const randomMonth = Math.floor(Math.random() * 12);
+        const daysInMonth = new Date(
+          randomYear,
+          randomMonth + 1,
+          0
+        ).getDate();
+        const randomDay = Math.floor(Math.random() * daysInMonth) + 1;
+        targetDate = new Date(Date.UTC(randomYear, randomMonth, randomDay));
+        includeTime = originalDate.includes("T");
+        tzSuffix = originalDate.endsWith("Z") ? "Z" : "";
+      }
+
+      if (includeTime) {
+        let isoString = new Date(targetDate).toISOString();
+        if (!tzSuffix) {
           isoString = isoString.slice(0, -1);
         }
         return isoString;
       } else if (/^\d{4}/.test(originalDate)) {
         const separator = originalDate.charAt(4);
-        return `${date.getUTCFullYear()}${separator}${pad(
-          date.getUTCMonth() + 1
-        )}${separator}${pad(date.getUTCDate())}`;
+        return `${targetDate.getUTCFullYear()}${separator}${pad(
+          targetDate.getUTCMonth() + 1
+        )}${separator}${pad(targetDate.getUTCDate())}`;
       } else {
         const separator = originalDate.charAt(2);
-        return `${pad(date.getUTCDate())}${separator}${pad(
-          date.getUTCMonth() + 1
-        )}${separator}${date.getUTCFullYear()}`;
+        return `${pad(targetDate.getUTCDate())}${separator}${pad(
+          targetDate.getUTCMonth() + 1
+        )}${separator}${targetDate.getUTCFullYear()}`;
       }
     }
 
