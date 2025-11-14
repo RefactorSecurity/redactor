@@ -147,6 +147,14 @@ input[type="checkbox"]:checked::before {
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35);
 }
 
+@media (max-width: 767px) {
+  /* Ensure stacked editors stay readable on phones and grow if space allows */
+  #input-editor-wrapper,
+  #output-editor {
+    min-height: clamp(calc(10 * 1.5rem), 45vh, 32rem);
+  }
+}
+
 .settings-tabs {
   display: flex;
   gap: 0.5rem;

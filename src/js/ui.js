@@ -46,6 +46,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const copyButton = document.getElementById("copy-button");
   const saveButton = document.getElementById("save-button");
   const bulkSaveButton = document.getElementById("bulk-save-button");
+  const mobileRedactButtonSlot = document.getElementById(
+    "mobile-redact-button-slot"
+  );
+  const desktopRedactButtonSlot = document.getElementById(
+    "desktop-redact-button-slot"
+  );
   const bulkSaveModal = document.getElementById("bulk-save-modal");
   const bulkSaveCountInput = document.getElementById("bulk-save-count");
   const bulkSaveStatus = document.getElementById("bulk-save-status");
@@ -1472,9 +1478,68 @@ document.addEventListener("DOMContentLoaded", () => {
   const splitter = document.getElementById("splitter"),
     leftPanel = document.getElementById("left-panel"),
     rightPanel = document.getElementById("right-panel"),
-    container = document.getElementById("container");
+    container = document.getElementById("container"),
+    mobileLayoutMediaQuery = window.matchMedia("(max-width: 767px)");
   let isDragging = false;
-  splitter.addEventListener("mousedown", () => (isDragging = true));
+  let storedDesktopWidths = null;
+
+  const isMobileLayout = () => mobileLayoutMediaQuery.matches;
+
+  function relocateRedactButton() {
+    if (!redactButton) return;
+    const targetSlot = isMobileLayout()
+      ? mobileRedactButtonSlot
+      : desktopRedactButtonSlot;
+    if (targetSlot && redactButton.parentElement !== targetSlot) {
+      targetSlot.appendChild(redactButton);
+    }
+  }
+
+  function storeCurrentWidths() {
+    storedDesktopWidths = {
+      left: leftPanel.style.width,
+      right: rightPanel.style.width,
+    };
+  }
+
+  function resetPanelsForMobile() {
+    if (!storedDesktopWidths) {
+      storeCurrentWidths();
+    }
+    leftPanel.style.width = "";
+    rightPanel.style.width = "";
+  }
+
+  function restorePanelsAfterMobile() {
+    if (!storedDesktopWidths) return;
+    leftPanel.style.width = storedDesktopWidths.left;
+    rightPanel.style.width = storedDesktopWidths.right;
+    storedDesktopWidths = null;
+  }
+
+  function handleLayoutChange() {
+    if (isMobileLayout()) {
+      resetPanelsForMobile();
+    } else {
+      restorePanelsAfterMobile();
+    }
+    inputEditor.refresh();
+    outputEditor.refresh();
+    relocateRedactButton();
+  }
+
+  if (typeof mobileLayoutMediaQuery.addEventListener === "function") {
+    mobileLayoutMediaQuery.addEventListener("change", handleLayoutChange);
+  } else {
+    mobileLayoutMediaQuery.addListener(handleLayoutChange);
+  }
+  handleLayoutChange();
+
+  splitter.addEventListener("mousedown", (event) => {
+    if (isMobileLayout()) return;
+    isDragging = true;
+    event.preventDefault();
+  });
   document.addEventListener("mouseup", () => {
     if (isDragging) {
       isDragging = false;
@@ -1483,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   document.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
+    if (!isDragging || isMobileLayout()) return;
     e.preventDefault();
     const containerRect = container.getBoundingClientRect();
     const newLeftWidth = e.clientX - containerRect.left;
