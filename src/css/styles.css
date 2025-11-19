@@ -198,6 +198,32 @@ input[type="checkbox"]:checked::before {
   transition: opacity 0.15s ease;
 }
 
+.shortcut-tooltip {
+  position: fixed;
+  background-color: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 1000;
+}
+
+.shortcut-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.dark .shortcut-tooltip {
+  background-color: rgba(15, 23, 42, 0.95);
+  color: #f1f5f9;
+}
+
 .loading-spinner {
   width: 2.75rem;
   height: 2.75rem;

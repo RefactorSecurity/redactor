@@ -103,6 +103,74 @@ document.addEventListener("DOMContentLoaded", () => {
     "settings-cancel-button"
   );
 
+  const navigatorPlatform =
+    navigator.userAgentData?.platform || navigator.platform || "";
+  const isMacPlatform = /mac/i.test(navigatorPlatform);
+
+  let redactShortcutTooltip;
+  let tooltipVisible = false;
+  const shortcutLabel = isMacPlatform ? "Cmd + Enter" : "Ctrl + Enter";
+  const tooltipText = `Redact (${shortcutLabel})`;
+
+  if (typeof document !== "undefined") {
+    redactShortcutTooltip = document.createElement("div");
+    redactShortcutTooltip.id = "redact-shortcut-tooltip";
+    redactShortcutTooltip.className = "shortcut-tooltip";
+    redactShortcutTooltip.setAttribute("role", "tooltip");
+    redactShortcutTooltip.textContent = tooltipText;
+    document.body.appendChild(redactShortcutTooltip);
+  }
+
+  function positionRedactTooltip() {
+    if (!redactButton || !redactShortcutTooltip) return;
+    const rect = redactButton.getBoundingClientRect();
+    const tooltipWidth = redactShortcutTooltip.offsetWidth;
+    const tooltipHeight = redactShortcutTooltip.offsetHeight;
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+    const clampedLeft = Math.min(
+      Math.max(
+        scrollX + rect.left + rect.width / 2 - tooltipWidth / 2,
+        scrollX + 8
+      ),
+      scrollX + window.innerWidth - tooltipWidth - 8
+    );
+    let top = scrollY + rect.top - tooltipHeight - 12;
+    if (top < scrollY + 8) {
+      top = scrollY + rect.bottom + 12;
+    }
+    redactShortcutTooltip.style.left = `${clampedLeft}px`;
+    redactShortcutTooltip.style.top = `${top}px`;
+  }
+
+  function showRedactTooltip() {
+    if (!redactButton || !redactShortcutTooltip) return;
+    positionRedactTooltip();
+    redactShortcutTooltip.classList.add("visible");
+    tooltipVisible = true;
+  }
+
+  function hideRedactTooltip() {
+    if (!redactShortcutTooltip) return;
+    redactShortcutTooltip.classList.remove("visible");
+    tooltipVisible = false;
+  }
+
+  if (redactButton) {
+    redactButton.title = tooltipText;
+    redactButton.setAttribute("aria-label", tooltipText);
+    redactButton.addEventListener("mouseenter", showRedactTooltip);
+    redactButton.addEventListener("mouseleave", hideRedactTooltip);
+    redactButton.addEventListener("focus", showRedactTooltip);
+    redactButton.addEventListener("blur", hideRedactTooltip);
+    window.addEventListener("scroll", () => {
+      if (tooltipVisible) positionRedactTooltip();
+    });
+    window.addEventListener("resize", () => {
+      if (tooltipVisible) positionRedactTooltip();
+    });
+  }
+
   // Settings Modal Elements
   const settingsButton = document.getElementById("settings-button");
   const settingsModal = document.getElementById("settings-modal");
