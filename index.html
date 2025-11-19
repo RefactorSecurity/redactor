@@ -28,7 +28,7 @@
     <script src="src/js/ui.js"></script>
   </head>
   <body
-    class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 font-sans h-screen flex flex-col transition-colors duration-300 pb-8"
+    class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 font-sans h-screen flex flex-col transition-colors duration-300 pb-8 md:pb-0 md:overflow-hidden"
   >
     <!-- Tab Bar -->
     <div
@@ -135,12 +135,12 @@
 
     <div
       id="container"
-      class="flex-grow flex flex-col md:flex-row w-full overflow-x-hidden overflow-y-auto md:overflow-hidden px-4 pt-4 gap-4 md:gap-0"
+      class="flex-grow flex flex-col md:flex-row w-full overflow-x-hidden overflow-y-auto md:overflow-hidden px-4 pt-4 gap-4 md:gap-0 md:min-h-0"
     >
       <!-- Input Panel -->
       <div
         id="left-panel"
-        class="flex flex-col w-full md:w-1/2 h-auto md:h-full p-2"
+        class="flex flex-col w-full md:w-1/2 h-auto md:h-full p-2 md:min-h-0"
       >
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center space-x-3">
@@ -285,7 +285,7 @@
       <!-- Output Panel -->
       <div
         id="right-panel"
-        class="flex flex-col w-full md:w-1/2 h-auto md:h-full p-2"
+        class="flex flex-col w-full md:w-1/2 h-auto md:h-full p-2 md:min-h-0"
       >
         <div class="flex items-center justify-between mb-2">
           <label class="text-lg font-semibold">Redacted Data</label>
@@ -509,7 +509,7 @@
 
     <div
       id="desktop-redact-button-slot"
-      class="hidden md:flex justify-end px-6 py-4"
+      class="hidden md:flex justify-end px-6 py-4 flex-shrink-0"
     >
       <button
         id="redact-button"
@@ -521,7 +521,7 @@
 
     <div
       id="footer-desktop"
-      class="hidden md:block fixed bottom-2 right-2 text-xs"
+      class="hidden md:flex justify-end w-full px-6 pb-6 text-xs flex-shrink-0"
     >
       <div
         class="flex gap-3 items-center bg-white/80 dark:bg-gray-900/80 backdrop-blur px-3 py-1.5 rounded-full shadow border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
