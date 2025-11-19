@@ -21,6 +21,8 @@
     /^\w+$/
   );
   const LETTER_DETECTOR_REGEX = createUnicodeRegex("\\p{L}", "u", /[A-Za-z]/i);
+  const IPV4_CANDIDATE_REGEX =
+    /\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b/g;
 
   function isLetter(char) {
     if (!char) return false;
@@ -1419,10 +1421,30 @@
       return literal;
     }
 
-    redactString(original) {
+    redactString(value) {
+      const original =
+        typeof value === "string" ? value : String(value ?? "");
+      const lowerOriginal = original.toLowerCase();
+      if (
+        lowerOriginal.startsWith("http://") ||
+        lowerOriginal.startsWith("https://")
+      ) {
+        const isSecure = lowerOriginal.startsWith("https://");
+        const protocolLength = isSecure ? "https://".length : "http://".length;
+        const preservedProtocol = original.slice(0, protocolLength);
+        const remainder = original.slice(protocolLength);
+        const redactedRemainder = remainder
+          ? this.redactString(remainder)
+          : "";
+        return preservedProtocol + redactedRemainder;
+      }
+
       const parts = original.split(WORD_SPLIT_REGEX);
-      return parts
-        .map((part) => {
+      const redacted = parts
+        .map((part, index) => {
+          if (this.shouldPreserveProtocol(parts, index)) {
+            return part;
+          }
           if (this.ignoredWordsSet.has(part.toLowerCase())) {
             return part;
           }
@@ -1440,6 +1462,7 @@
           }
         })
         .join("");
+      return this.ensureValidIpSequences(original, redacted);
     }
 
     preserveCase(original, newWord) {
@@ -1484,6 +1507,80 @@
         }
       }
       return redacted;
+    }
+
+    ensureValidIpSequences(original, redacted) {
+      if (typeof redacted !== "string" || !redacted) return redacted;
+      IPV4_CANDIDATE_REGEX.lastIndex = 0;
+      const matches = [];
+      let match;
+      while ((match = IPV4_CANDIDATE_REGEX.exec(original))) {
+        const octets = match.slice(1, 5);
+        if (!this.areValidIpv4Octets(octets)) continue;
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          octets,
+        });
+      }
+      if (!matches.length) return redacted;
+      let cursor = 0;
+      let result = "";
+      for (const candidate of matches) {
+        result += redacted.slice(cursor, candidate.start);
+        result += this.buildRandomIp(candidate.octets);
+        cursor = candidate.end;
+      }
+      result += redacted.slice(cursor);
+      return result;
+    }
+
+    areValidIpv4Octets(octets) {
+      if (!octets || octets.length !== 4) return false;
+      return octets.every((octet) => {
+        if (octet === "" || octet.length > 3) return false;
+        if (!/^\d+$/.test(octet)) return false;
+        const value = Number(octet);
+        return Number.isInteger(value) && value >= 0 && value <= 255;
+      });
+    }
+
+    buildRandomIp(octets) {
+      return octets
+        .map((octet) => this.generateIpOctet(octet || "0"))
+        .join(".");
+    }
+
+    generateIpOctet(sourceOctet) {
+      const length = sourceOctet.length || 1;
+      const disallowLeadingZero =
+        length > 1 && !sourceOctet.startsWith("0");
+      const minBase = disallowLeadingZero
+        ? Math.pow(10, length - 1)
+        : 0;
+      const maxBase = Math.pow(10, length) - 1;
+      const max = Math.min(maxBase, 255);
+      const min = Math.min(minBase, max);
+      const range = max - min + 1;
+      const randomValue =
+        range > 0 ? min + Math.floor(Math.random() * range) : max;
+      let result = String(randomValue);
+      if (result.length < length) {
+        result = result.padStart(length, "0");
+      } else if (result.length > length) {
+        result = result.slice(-length);
+      }
+      return result;
+    }
+
+    shouldPreserveProtocol(parts, index) {
+      const part = parts[index];
+      if (typeof part !== "string") return false;
+      const lower = part.toLowerCase();
+      if (lower !== "http" && lower !== "https") return false;
+      const next = parts[index + 1];
+      if (typeof next !== "string") return false;
+      return next.startsWith("://");
     }
 
     isProtectedField(fieldName) {
