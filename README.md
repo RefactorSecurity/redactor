@@ -1,6 +1,6 @@
 # Redactor
 
-Redactor is a browser-based utility for safely sharing sensitive data such as API logs, HTTP requests, or configuration files. Paste any payload into the left editor, click **Redact**, and the right editor produces a structure-preserving version with secrets replaced by realistic placeholders.
+Redactor is a browser-based utility for redacting sensitive data across formats—HTTP requests and responses, configuration files, and more—so that confidential details stay private. It lets you sanitize payloads before sharing them with AI assistants like ChatGPT or Gemini so you can keep the structure that matters without leaking sensitive information. Paste any payload into the left editor, click **Redact**, and the right editor produces a structure-preserving version with sensitive information replaced by realistic placeholders.
 
 ## Key Features
 
@@ -10,7 +10,7 @@ Redactor is a browser-based utility for safely sharing sensitive data such as AP
 - **Theme & UI options** – Light/dark theme toggle, syntax-highlighting control, tabbed workspace with rename/close, scrollable tab bar, and responsive layout.
 - **Data ingress** – Load bundled samples, open local files, or paste directly. Tabs keep per-input state (raw/redacted text and detected format).
 - **Data egress** – Copy to clipboard, save a single redaction, or use **Bulk Save** to generate multiple redacted variants in one ZIP.
-- **Offline-friendly** – All logic runs client-side; no servers or network calls beyond CDN-loaded libraries.
+- **Offline-friendly & backend-free** – All logic runs entirely in the browser; no backend services or network calls beyond the CDN-loaded libraries.
 
 ## Getting Started
 
