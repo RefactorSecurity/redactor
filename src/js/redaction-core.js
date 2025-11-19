@@ -939,6 +939,15 @@
         headerLines[idx] = `${key}: ${value}`;
       });
       const hasFilename = /filename=/i.test(cdValue);
+      const fieldName = extractContentDispositionParameter(cdValue, "name");
+      let redactedParamNameValue;
+      const shouldRedactParamName =
+        Boolean(fieldName) &&
+        currentRedactor.settings.redactParamNames &&
+        !currentRedactor.isProtectedField(fieldName);
+      if (shouldRedactParamName) {
+        redactedParamNameValue = currentRedactor.redactString(fieldName);
+      }
       let redactedBody = bodySection;
       if (hasFilename) {
         redactedBody = redactMultipartFileBody(
@@ -946,17 +955,25 @@
           currentRedactor,
           partContentType
         );
-        if (cdIndex !== -1) {
-          headerLines[cdIndex] = formatContentDisposition(cdValue, currentRedactor, {
-            forceFilenameRedaction: true,
-          });
-        }
       } else {
         const plainRedaction = redactPlainTextResult(
           bodySection || "",
           currentRedactor
         );
         redactedBody = plainRedaction.output;
+      }
+      if (
+        cdIndex !== -1 &&
+        (hasFilename || typeof redactedParamNameValue !== "undefined")
+      ) {
+        headerLines[cdIndex] = formatContentDisposition(
+          cdValue,
+          currentRedactor,
+          {
+            forceFilenameRedaction: hasFilename,
+            redactedParamNameValue,
+          }
+        );
       }
       processedParts.push(
         `${headerLines.join("\r\n")}${separator}${redactedBody}`
@@ -1002,6 +1019,21 @@
     }
   }
 
+  function extractContentDispositionParameter(
+    value = "",
+    parameter = ""
+  ) {
+    if (!value || !parameter) return "";
+    const safeParameter = parameter.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(
+      `${safeParameter}\\s*=\\s*(?:"([^"]+)"|([^;]+))`,
+      "i"
+    );
+    const match = value.match(regex);
+    if (!match) return "";
+    return (match[1] || match[2] || "").trim();
+  }
+
   function formatContentDisposition(
     value,
     currentRedactor,
@@ -1013,20 +1045,43 @@
     const forceFilenameRedaction = Boolean(
       options.forceFilenameRedaction
     );
-    if (!forceFilenameRedaction && normalized !== "attachment") {
-      return `Content-Disposition: ${value}`;
-    }
     const updatedParts = parts.map((part) => part.trim());
+    const hasRedactedParamNameValue =
+      Object.prototype.hasOwnProperty.call(
+        options,
+        "redactedParamNameValue"
+      );
+    let modified = false;
+    if (hasRedactedParamNameValue) {
+      const namePartIndex = updatedParts.findIndex((part) =>
+        part.toLowerCase().startsWith("name=")
+      );
+      if (namePartIndex !== -1) {
+        updatedParts[namePartIndex] = `name="${
+          options.redactedParamNameValue || ""
+        }"`;
+        modified = true;
+      }
+    }
+    if (!forceFilenameRedaction && normalized !== "attachment") {
+      return modified
+        ? `Content-Disposition: ${updatedParts.join("; ")}`
+        : `Content-Disposition: ${value}`;
+    }
     const filenamePartIndex = updatedParts.findIndex((part) =>
       part.toLowerCase().startsWith("filename=")
     );
     if (filenamePartIndex === -1) {
-      return `Content-Disposition: ${value}`;
+      return modified
+        ? `Content-Disposition: ${updatedParts.join("; ")}`
+        : `Content-Disposition: ${value}`;
     }
     const originalPart = updatedParts[filenamePartIndex];
     const match = originalPart.match(/filename=(?:"([^"]+)"|([^;]+))/i);
     if (!match) {
-      return `Content-Disposition: ${value}`;
+      return modified
+        ? `Content-Disposition: ${updatedParts.join("; ")}`
+        : `Content-Disposition: ${value}`;
     }
     const originalFilename = match[1] || match[2];
     const lastDot = originalFilename.lastIndexOf(".");
