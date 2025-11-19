@@ -1708,6 +1708,7 @@ document.addEventListener("DOMContentLoaded", () => {
     container = document.getElementById("container"),
     mobileLayoutMediaQuery = window.matchMedia("(max-width: 767px)");
   let isDragging = false;
+  let userHasAdjustedSplitter = false;
   let storedDesktopWidths = null;
 
   const isMobileLayout = () => mobileLayoutMediaQuery.matches;
@@ -1786,7 +1787,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const newLeftPercent = (newLeftWidth / container.clientWidth) * 100;
       leftPanel.style.width = `${newLeftPercent}%`;
       rightPanel.style.width = `${100 - newLeftPercent}%`;
+      userHasAdjustedSplitter = true;
     }
+  });
+
+  splitter.addEventListener("dblclick", () => {
+    if (isMobileLayout() || !userHasAdjustedSplitter) return;
+    leftPanel.style.width = "50%";
+    rightPanel.style.width = "50%";
+    userHasAdjustedSplitter = false;
+    inputEditor.refresh();
+    outputEditor.refresh();
   });
 
   // --- Tab Scrolling ---
