@@ -1,4 +1,6 @@
-# Redactor
+<h1 align="center">
+    <img src="src/images/logo.svg" height="48" alt="logo">
+</h1>
 
 Redactor is a browser-based utility for redacting sensitive data across formats—HTTP requests and responses, configuration files, and more—so that confidential details stay private. It lets you sanitize payloads before sharing them with AI assistants like ChatGPT or Gemini so you can keep the structure that matters without leaking sensitive information. Paste any payload into the left editor, click **Redact**, and the right editor produces a structure-preserving version with sensitive information replaced by realistic placeholders.
 
@@ -19,8 +21,6 @@ Redactor is a browser-based utility for redacting sensitive data across formats�
 3. Adjust settings via the ⚙️ icon if you need custom redaction behavior.
 4. Click **Redact** (or press `Cmd/Ctrl + Enter`) to produce sanitized output.
 5. Use **Copy**, **Save**, or **Bulk Save** to share the redacted result.
-
-> Tip: When using Bulk Save, specify how many alternative redactions you want—the app will regenerate fresh placeholders for each file and download a ZIP bundle.
 
 ## Tech Stack
 
