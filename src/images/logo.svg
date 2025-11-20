@@ -9,7 +9,7 @@
    id="svg1"
    xml:space="preserve"
    inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
-   sodipodi:docname="redactor-logo.svg"
+   sodipodi:docname="logo.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -24,8 +24,8 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="1.0167041"
-     inkscape:cx="455.39308"
-     inkscape:cy="-2.9507111"
+     inkscape:cx="76.718487"
+     inkscape:cy="-185.89479"
      inkscape:window-width="1920"
      inkscape:window-height="1021"
      inkscape:window-x="1920"
@@ -39,7 +39,7 @@
        height="85.545181"
        id="rect2" /></defs><path
      style="fill:#1a81bf;fill-opacity:1;stroke-width:0.264583"
-     d="M 0,0 H 8.8327136 V 4.6003699 H 5.1524156 V 30.36246 h 3.58829 v 4.416348 H 0.184015 V 0 Z"
+     d="M -0.17134173,0 H 8.6613718 V 4.6003699 H 4.9810738 V 30.36246 h 3.58829 v 4.416348 H 0.01267327 V 0 Z"
      id="path1"
      inkscape:label="LEFT BRACKET" /><path
      style="fill:#1a81bf;fill-opacity:1;stroke-width:0.264583"
@@ -58,7 +58,7 @@
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Rubik;-inkscape-font-specification:Rubik;stroke-width:0.17747;fill:#9c9fa0;fill-opacity:0.96305418"
        x="8.4838333"
        y="28.218992">REDACTOR</tspan></text><path
-     style="fill:#2c9ad1;fill-opacity:0.87438422;stroke-width:0.255495"
-     d="M 9.0187804,15.250247 H 156.41467 v 5.70446 H 9.0187804 Z"
+     style="fill:#2c9ad1;fill-opacity:0.874384;stroke-width:0.255495"
+     d="m 8.74985,15.250247 h 147.39589 v 5.70446 H 8.74985 Z"
      id="path2"
      inkscape:label="LINE" /></svg>
