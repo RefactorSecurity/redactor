@@ -4,6 +4,8 @@
 
 Redactor is a browser-based utility for redacting sensitive data across formats—HTTP requests and responses, configuration files, and more—so that confidential details stay private. It lets you sanitize payloads before sharing them with AI assistants like ChatGPT or Gemini so you can keep the structure that matters without leaking sensitive information. Paste any payload into the left editor, click **Redact**, and the right editor produces a structure-preserving version with sensitive information replaced by realistic placeholders.
 
+Use it instantly at [redactor.sh](https://redactor.sh), or clone this repository and self-host it with `python3 -m http.server`, `php -S localhost:8000`, or any static file server if you prefer running it locally/offline.
+
 ## Key Features
 
 - **Multi-format support** – Automatically detects JSON, XML/HTML, YAML, CSV, HTTP requests/responses, form-encoded payloads, and plain text; applies format-aware redaction rules.
@@ -13,14 +15,6 @@ Redactor is a browser-based utility for redacting sensitive data across formats�
 - **Data ingress** – Load bundled samples, open local files, or paste directly. Tabs keep per-input state (raw/redacted text and detected format).
 - **Data egress** – Copy to clipboard, save a single redaction, or use **Bulk Save** to generate multiple redacted variants in one ZIP.
 - **Offline-friendly & backend-free** – All logic runs entirely in the browser; no backend services or network calls beyond the CDN-loaded libraries.
-
-## Getting Started
-
-1. Open `index.html` in a modern desktop browser (Chrome, Edge, Firefox, or Safari).
-2. Paste sample data, choose **Load Data → Examples**, or open your own file.
-3. Adjust settings via the ⚙️ icon if you need custom redaction behavior.
-4. Click **Redact** (or press `Cmd/Ctrl + Enter`) to produce sanitized output.
-5. Use **Copy**, **Save**, or **Bulk Save** to share the redacted result.
 
 ## Tech Stack
 
