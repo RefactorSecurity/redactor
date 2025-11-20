@@ -38,7 +38,6 @@ are
 arm
 art
 ask
-bad
 bar
 bat
 bed
@@ -53,12 +52,10 @@ can
 car
 cat
 cow
-cry
 cut
 dad
 day
 did
-die
 dog
 dry
 ear
@@ -77,7 +74,6 @@ fun
 gas
 get
 got
-gun
 had
 has
 hat
@@ -144,7 +140,6 @@ top
 try
 two
 use
-war
 was
 way
 who
@@ -197,8 +192,6 @@ copy
 corn
 cost
 crop
-dark
-dead
 deal
 dear
 deep
@@ -222,7 +215,6 @@ fair
 fall
 farm
 fast
-fear
 feed
 feel
 feet
@@ -282,12 +274,10 @@ jump
 just
 keep
 kept
-kill
 kind
 king
 knew
 know
-lack
 lady
 laid
 lake
@@ -295,7 +285,6 @@ land
 last
 late
 lead
-left
 less
 life
 lift
@@ -303,7 +292,6 @@ like
 line
 list
 live
-lone
 long
 look
 lost
@@ -489,20 +477,16 @@ again
 agree
 allow
 among
-anger
 apple
 basic
 began
 begin
 black
 block
-blood
 board
 bread
-break
 bring
 broad
-broke
 brown
 build
 carry
@@ -532,7 +516,6 @@ cover
 cross
 crowd
 dance
-death
 dream
 dress
 drink
@@ -541,7 +524,6 @@ drove
 early
 earth
 eight
-enemy
 enter
 equal
 event
@@ -549,7 +531,6 @@ every
 exact
 favor
 field
-fight
 final
 first
 floor
@@ -643,14 +624,12 @@ sharp
 sheet
 shell
 shine
-shoot
 shore
 short
 shout
 sight
 since
 skill
-slave
 sleep
 small
 smell
@@ -723,10 +702,8 @@ women
 world
 would
 write
-wrong
 wrote
 young
-afraid
 always
 animal
 answer
@@ -755,7 +732,6 @@ cotton
 course
 crease
 create
-danger
 decide
 degree
 depend
@@ -874,7 +850,6 @@ window
 winter
 wonder
 yellow
-against
 arrange
 believe
 between
@@ -922,7 +897,6 @@ perhaps
 picture
 prepare
 present
-problem
 process
 produce
 product
@@ -947,7 +921,6 @@ support
 surface
 thought
 through
-trouble
 village
 weather
 whether
@@ -1052,8 +1025,6 @@ international
 administrative
 constitutional
 correspondence
-disappointment
-discrimination
 generalization
 identification
 implementation
@@ -1082,21 +1053,18 @@ institutionalize
 incomprehensible
 internationalism
 professionalized
-counterrevolution
 electrocardiogram
 unintelligibility
 telecommunication
 professionalizing
 characteristically
 institutionalizing
-weatherforecasting
 misunderstandingly
 interconnectedness
 counterintelligence
 professionalization
 deindustrialization
 telecommunicational
-counterrevolutionist
 counterdemonstration
 institutionalisation
 professionalisations
